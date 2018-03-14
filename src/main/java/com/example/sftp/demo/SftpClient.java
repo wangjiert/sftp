@@ -113,11 +113,11 @@ public class SftpClient {
 
 	private static boolean initList() {
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
-		JoinTask task = new JoinTask();
-		Future<Void> result = forkJoinPool.submit(task);
+		Future<Void> result = forkJoinPool.submit(new JoinTask());
 		try {
 			result.get();
 		} catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
 			logger.error(e.getMessage());
 			System.out.println("init failed");
 			return false;
