@@ -1,4 +1,4 @@
-package com.example.sftp_sh.demo;
+package com.example.sftp.demo;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,7 +12,7 @@ import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.example.sftp_sh.model.FileServerInfo;
+import com.example.sftp.model.FileServerInfo;
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;

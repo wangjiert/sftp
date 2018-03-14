@@ -1,4 +1,4 @@
-package com.example.sftp_sh.model;
+package com.example.sftp.model;
 
 import java.util.Properties;
 

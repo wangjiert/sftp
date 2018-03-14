@@ -1,4 +1,4 @@
-package com.example.sftp_sh.demo;
+package com.example.sftp.demo;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -10,13 +10,17 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Future;
+import java.util.concurrent.RecursiveTask;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.example.sftp_sh.model.FileServerInfo;
+import com.example.sftp.model.FileServerInfo;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.SftpException;
 
@@ -106,7 +110,16 @@ public class SftpClient {
 		}
 	}
 
-	private static void initList() {
+	private static boolean initList() {
+		ForkJoinPool forkJoinPool = new ForkJoinPool();
+		JoinTask task = new JoinTask(fileServerInfo.getMax());
+		Future<Void> result = forkJoinPool.submit(task);  
+        try {
+			result.get();
+		} catch (InterruptedException|ExecutionException e) {
+			logger.error(e.getMessage());
+			return false;
+		}
 		while (CHANNELS.size() != fileServerInfo.getMax()) {
 			ChannelSftp sftp = SftpUtil.sftpConnect(fileServerInfo.getHost(), fileServerInfo.getPort(),
 					fileServerInfo.getAccount(), fileServerInfo.getPassword(), fileServerInfo.getPrivateKey(),
@@ -206,6 +219,31 @@ public class SftpClient {
 			}
 			SftpClient.endSignal.countDown();
 		}
+	}
+	
+	static class JoinTask extends RecursiveTask<Void> {
+		private int sum;
+		private Runnable task;		
+		public JoinTask(int sum, Runnable task) {
+			this.sum = sum;
+			this.task = task;
+		}
+
+		@Override
+		protected Void compute() {
+			if (sum > 10) {
+				int leftSum = sum/2;
+				JoinTask left = new JoinTask(leftSum);
+				JoinTask right = new JoinTask(sum - leftSum);
+				left.fork();
+				right.fork();
+				left.join();
+				return right.join();
+			}
+			task.run();
+			return null;
+		}
+		
 	}
 
 	public static void download(String[] args) {
