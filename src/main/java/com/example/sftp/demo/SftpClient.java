@@ -233,17 +233,17 @@ public class SftpClient {
 
 		private void addList(int sum) {
 			while (sum > 0) {
-				ChannelSftp sftp = SftpUtil.sftpConnect(fileServerInfo.getHost(), fileServerInfo.getPort(),
-						fileServerInfo.getAccount(), fileServerInfo.getPassword(), fileServerInfo.getPrivateKey(),
-						fileServerInfo.getPassphrase(), fileServerInfo.getTimeout());
-				if (sftp != null) {
+				//ChannelSftp sftp = SftpUtil.sftpConnect(fileServerInfo.getHost(), fileServerInfo.getPort(),
+				//		fileServerInfo.getAccount(), fileServerInfo.getPassword(), fileServerInfo.getPrivateKey(),
+				//		fileServerInfo.getPassphrase(), fileServerInfo.getTimeout());
+				//if (sftp != null) {
 					SftpUtil.SftpProgressMonitorImpl listen = new SftpUtil.SftpProgressMonitorImpl();
 					synchronized (SftpClient.endSignal) {
-						CHANNELS.add(sftp);
+						//CHANNELS.add(sftp);
 						LISTENERS.add(listen);
 					}
 					sum--;
-				}
+				//}
 			}
 		}
 
