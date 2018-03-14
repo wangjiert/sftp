@@ -239,7 +239,7 @@ public class SftpClient {
 				if (sftp != null) {
 					SftpUtil.SftpProgressMonitorImpl listen = new SftpUtil.SftpProgressMonitorImpl();
 					synchronized (SftpClient.endSignal) {
-						CHANNELS.add(sftp);
+						//CHANNELS.add(sftp);
 						LISTENERS.add(listen);
 					}
 					sum--;
@@ -258,7 +258,7 @@ public class SftpClient {
 				left.join();
 				right.join();
 			} else {
-				//addList(sum);
+				addList(sum);
 				System.out.println("add");
 			}
 		}
