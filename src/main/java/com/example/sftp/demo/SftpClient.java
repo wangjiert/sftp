@@ -39,7 +39,7 @@ public class SftpClient {
 	public static void main(String[] args) {
 		upload(args);
 	}
-	
+
 	public static void upload(String[] args) {
 		HOME_PATH = System.getProperty("SFTP_HOME");
 		if (HOME_PATH == null || HOME_PATH.equals("")) {
@@ -115,16 +115,16 @@ public class SftpClient {
 	private static boolean initList() {
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
 		forkJoinPool.invoke(new ListTask(fileServerInfo.getMax()));
-		//Future<Void> result = forkJoinPool.submit(new JoinTask());
-//		try {
-//			result.get();
-//			forkJoinPool.shutdown();
-//		} catch (InterruptedException | ExecutionException e) {
-//			e.printStackTrace();
-//			logger.error(e.getMessage());
-//			System.out.println("init failed");
-//			return false;
-//		}
+		// Future<Void> result = forkJoinPool.submit(new JoinTask());
+		// try {
+		// result.get();
+		// forkJoinPool.shutdown();
+		// } catch (InterruptedException | ExecutionException e) {
+		// e.printStackTrace();
+		// logger.error(e.getMessage());
+		// System.out.println("init failed");
+		// return false;
+		// }
 		return true;
 	}
 
@@ -233,20 +233,19 @@ public class SftpClient {
 
 		private void addList(int sum) {
 			while (sum > 0) {
-				//ChannelSftp sftp = SftpUtil.sftpConnect(fileServerInfo.getHost(), fileServerInfo.getPort(),
-				//		fileServerInfo.getAccount(), fileServerInfo.getPassword(), fileServerInfo.getPrivateKey(),
-				//		fileServerInfo.getPassphrase(), fileServerInfo.getTimeout());
-				//if (sftp != null) {
+				ChannelSftp sftp = SftpUtil.sftpConnect(fileServerInfo.getHost(), fileServerInfo.getPort(),
+						fileServerInfo.getAccount(), fileServerInfo.getPassword(), fileServerInfo.getPrivateKey(),
+						fileServerInfo.getPassphrase(), fileServerInfo.getTimeout());
+				if (sftp != null) {
 					SftpUtil.SftpProgressMonitorImpl listen = new SftpUtil.SftpProgressMonitorImpl();
-					//synchronized (SftpClient.endSignal) {
-						//CHANNELS.add(sftp);
+					// synchronized (SftpClient.endSignal) {
 					lock.lock();
-						LISTENERS.add(listen);
-						lock.unlock();
-					//}
-				System.out.println("add");
+					CHANNELS.add(sftp);
+					LISTENERS.add(listen);
+					lock.unlock();
+					// }
 					sum--;
-				//}
+				}
 			}
 
 		}
