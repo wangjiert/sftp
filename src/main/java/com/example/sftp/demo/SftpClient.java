@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
+import java.util.concurrent.RecursiveAction;
 import java.util.concurrent.RecursiveTask;
 
 import org.apache.logging.log4j.LogManager;
@@ -113,9 +114,10 @@ public class SftpClient {
 
 	private static boolean initList() {
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
-		Future<String> result = forkJoinPool.submit(new JoinTask());
+		Future<Void> result = forkJoinPool.submit(new JoinTask());
 		try {
 			result.get();
+			forkJoinPool.shutdown();
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 			logger.error(e.getMessage());
@@ -200,10 +202,10 @@ public class SftpClient {
 		}
 	}
 
-	static class FileTask extends RecursiveTask<String> {
+	static class FileTask extends RecursiveAction {
 
 		@Override
-		protected String compute() {
+		protected void compute() {
 			File localDir = new File(fileServerInfo.getLocalPath());
 			File files[] = localDir.listFiles(new FileFilter() {
 
@@ -217,12 +219,11 @@ public class SftpClient {
 
 			});
 			FILES.addAll(Arrays.asList(files));
-			return "ok";
 		}
 
 	}
 
-	static class ListTask extends RecursiveTask<String> {
+	static class ListTask extends RecursiveAction {
 		private int sum;
 
 		public ListTask(int sum) {
@@ -246,33 +247,31 @@ public class SftpClient {
 		}
 
 		@Override
-		protected String compute() {
+		protected void compute() {
 			if (sum > 8) {
 				int leftSum = sum / 2;
-				RecursiveTask left = new ListTask(leftSum);
-				RecursiveTask right = new ListTask(sum - leftSum);
+				ListTask left = new ListTask(leftSum);
+				ListTask right = new ListTask(sum - leftSum);
 				left.fork();
 				right.fork();
 				left.join();
 				right.join();
-				return "ok";
+			} else {
+				addList(sum);
 			}
-			addList(sum);
-			return "ok";
 		}
 
 	}
 
-	static class JoinTask extends RecursiveTask<String> {
+	static class JoinTask extends RecursiveAction {
 		@Override
-		protected String compute() {
-			RecursiveTask left = new FileTask();
-			RecursiveTask right = new ListTask(fileServerInfo.getMax());
+		protected void compute() {
+			FileTask left = new FileTask();
+			ListTask right = new ListTask(fileServerInfo.getMax());
 			left.fork();
 			right.fork();
 			left.join();
 			right.join();
-			return "ok";
 		}
 
 	}
