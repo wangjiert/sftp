@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="[%d][%t][%p][%c:%L] %m%n" />
+        </Console>
+        <RollingFile name="DailyRollingFile" fileName="${sys:SFTP_HOME}/sftp.log"
+            filePattern="${log_path}/sftp%d{yyyy-MM-dd}.log">
+            <PatternLayout pattern="[%d][%t][%p][%c:%L] %m%n" />
+            <TimeBasedTriggeringPolicy  interval="1"/>
+
+        </RollingFile>
+    </Appenders>
+    <Loggers> 
+        <Root level="info">
+            <AppenderRef ref="DailyRollingFile"/>
+        </Root>
+    </Loggers>
+</Configuration>

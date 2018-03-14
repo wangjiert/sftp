@@ -1,0 +1,6 @@
+target/
+sftp.log
+sftp.tar.gz
+.settings
+.classpath
+.project

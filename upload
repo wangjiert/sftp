@@ -1,0 +1,4 @@
+#!/bin/sh
+mvn package
+tar -cvzf ../sftp.tar.gz .
+mv ../sftp.tar.gz .
