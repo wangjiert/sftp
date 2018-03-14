@@ -113,7 +113,7 @@ public class SftpClient {
 
 	private static boolean initList() {
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
-		Future<Void> result = forkJoinPool.submit(new JoinTask());
+		Future<String> result = forkJoinPool.submit(new JoinTask());
 		try {
 			result.get();
 		} catch (InterruptedException | ExecutionException e) {
@@ -263,16 +263,16 @@ public class SftpClient {
 
 	}
 
-	static class JoinTask extends RecursiveTask<Void> {
+	static class JoinTask extends RecursiveTask<String> {
 		@Override
-		protected Void compute() {
+		protected String compute() {
 			RecursiveTask left = new FileTask();
 			RecursiveTask right = new ListTask(fileServerInfo.getMax());
 			left.fork();
 			right.fork();
 			left.join();
 			right.join();
-			return null;
+			return "ok";
 		}
 
 	}
