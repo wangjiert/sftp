@@ -10,13 +10,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.Future;
 import java.util.concurrent.RecursiveAction;
-import java.util.concurrent.RecursiveTask;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,6 +25,7 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.SftpException;
 
 public class SftpClient {
+	static Lock lock = new ReentrantLock();
 	private static Logger logger = LogManager.getLogger(SftpClient.class);
 	private static final String CONF_PATH = "conf/conf.properties";
 	private static String HOME_PATH;
@@ -238,14 +238,17 @@ public class SftpClient {
 				//		fileServerInfo.getPassphrase(), fileServerInfo.getTimeout());
 				//if (sftp != null) {
 					SftpUtil.SftpProgressMonitorImpl listen = new SftpUtil.SftpProgressMonitorImpl();
-					synchronized (SftpClient.endSignal) {
+					//synchronized (SftpClient.endSignal) {
 						//CHANNELS.add(sftp);
+					lock.lock();
 						LISTENERS.add(listen);
-					}
+						lock.unlock();
+					//}
 				System.out.println("add");
 					sum--;
 				//}
 			}
+
 		}
 
 		@Override
