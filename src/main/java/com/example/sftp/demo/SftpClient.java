@@ -21,7 +21,6 @@ import java.util.concurrent.RecursiveTask;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.example.sftp.Test;
 import com.example.sftp.model.FileServerInfo;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.SftpException;
@@ -38,8 +37,7 @@ public class SftpClient {
 	private static Task TASK = new Task();
 
 	public static void main(String[] args) {
-		Test.main1(args);
-		//upload(args);
+		upload(args);
 	}
 	
 	public static void upload(String[] args) {
