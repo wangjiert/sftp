@@ -238,10 +238,10 @@ public class SftpClient {
 				//		fileServerInfo.getPassphrase(), fileServerInfo.getTimeout());
 				//if (sftp != null) {
 					SftpUtil.SftpProgressMonitorImpl listen = new SftpUtil.SftpProgressMonitorImpl();
-					//synchronized (SftpClient.endSignal) {
+					synchronized (SftpClient.endSignal) {
 						//CHANNELS.add(sftp);
 						LISTENERS.add(listen);
-					//}
+					}
 				System.out.println("add");
 					sum--;
 				//}
