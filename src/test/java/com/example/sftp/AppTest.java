@@ -1,4 +1,4 @@
-package com.example.sftp_sh;
+package com.example.sftp;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
