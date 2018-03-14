@@ -115,15 +115,15 @@ public class SftpClient {
 	private static boolean initList() {
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
 		Future<Void> result = forkJoinPool.submit(new JoinTask());
-		try {
-			result.get();
-			forkJoinPool.shutdown();
-		} catch (InterruptedException | ExecutionException e) {
-			e.printStackTrace();
-			logger.error(e.getMessage());
-			System.out.println("init failed");
-			return false;
-		}
+//		try {
+//			result.get();
+//			forkJoinPool.shutdown();
+//		} catch (InterruptedException | ExecutionException e) {
+//			e.printStackTrace();
+//			logger.error(e.getMessage());
+//			System.out.println("init failed");
+//			return false;
+//		}
 		return true;
 	}
 
