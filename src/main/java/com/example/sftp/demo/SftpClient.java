@@ -50,7 +50,7 @@ public class SftpClient {
 		if (fileServerInfo == null) {
 			return;
 		}
-		
+
 		File localDir = new File(fileServerInfo.getLocalPath());
 		if (!localDir.exists()) {
 			System.out.printf("local dir: %s doesn't exist", localDir.getAbsolutePath());
@@ -63,7 +63,9 @@ public class SftpClient {
 			return;
 		}
 
-		initList();
+		if (!initList()) {
+			return;
+		}
 
 		if (!checkRemoteDir()) {
 			System.out.printf("can't create required directory: %s, please check log file for reason\n",
@@ -82,7 +84,6 @@ public class SftpClient {
 		try {
 			endSignal.await();
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			logger.error(e.getMessage());
 			System.out.println("some exception occur, please see log file");
 		}
@@ -112,38 +113,16 @@ public class SftpClient {
 
 	private static boolean initList() {
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
-		JoinTask task = new JoinTask(fileServerInfo.getMax());
-		Future<Void> result = forkJoinPool.submit(task);  
-        try {
+		JoinTask task = new JoinTask();
+		Future<Void> result = forkJoinPool.submit(task);
+		try {
 			result.get();
-		} catch (InterruptedException|ExecutionException e) {
+		} catch (InterruptedException | ExecutionException e) {
 			logger.error(e.getMessage());
+			System.out.println("init failed");
 			return false;
 		}
-		while (CHANNELS.size() != fileServerInfo.getMax()) {
-			ChannelSftp sftp = SftpUtil.sftpConnect(fileServerInfo.getHost(), fileServerInfo.getPort(),
-					fileServerInfo.getAccount(), fileServerInfo.getPassword(), fileServerInfo.getPrivateKey(),
-					fileServerInfo.getPassphrase(), fileServerInfo.getTimeout());
-			if (sftp != null) {
-				CHANNELS.add(sftp);
-				LISTENERS.add(new SftpUtil.SftpProgressMonitorImpl());
-			}
-		}
-
-		File localDir = new File(fileServerInfo.getLocalPath());
-		fileServerInfo.setFilePath(fileServerInfo.getFilePath() + "/" + localDir.getName());
-		File files[] = localDir.listFiles(new FileFilter() {
-
-			@Override
-			public boolean accept(File pathname) {
-				if (pathname.isDirectory()) {
-					return false;
-				}
-				return true;
-			}
-
-		});
-		FILES.addAll(Arrays.asList(files));
+		return true;
 	}
 
 	private static boolean checkConnect() {
@@ -194,7 +173,7 @@ public class SftpClient {
 		}
 		return null;
 	}
-	
+
 	private synchronized static SftpUtil.SftpProgressMonitorImpl syncListen(SftpUtil.SftpProgressMonitorImpl listen) {
 		if (listen != null) {
 			LISTENERS.add(listen);
@@ -220,30 +199,82 @@ public class SftpClient {
 			SftpClient.endSignal.countDown();
 		}
 	}
-	
-	static class JoinTask extends RecursiveTask<Void> {
+
+	static class FileTask extends RecursiveTask<Void> {
+
+		@Override
+		protected Void compute() {
+			File localDir = new File(fileServerInfo.getLocalPath());
+			File files[] = localDir.listFiles(new FileFilter() {
+
+				@Override
+				public boolean accept(File pathname) {
+					if (pathname.isDirectory()) {
+						return false;
+					}
+					return true;
+				}
+
+			});
+			FILES.addAll(Arrays.asList(files));
+			return null;
+		}
+
+	}
+
+	static class ListTask extends RecursiveTask<Void> {
 		private int sum;
-		private Runnable task;		
-		public JoinTask(int sum, Runnable task) {
+
+		public ListTask(int sum) {
 			this.sum = sum;
-			this.task = task;
+		}
+
+		private void addList(int sum) {
+			while (sum > 0) {
+				ChannelSftp sftp = SftpUtil.sftpConnect(fileServerInfo.getHost(), fileServerInfo.getPort(),
+						fileServerInfo.getAccount(), fileServerInfo.getPassword(), fileServerInfo.getPrivateKey(),
+						fileServerInfo.getPassphrase(), fileServerInfo.getTimeout());
+				if (sftp != null) {
+					SftpUtil.SftpProgressMonitorImpl listen = new SftpUtil.SftpProgressMonitorImpl();
+					synchronized (SftpClient.endSignal) {
+						CHANNELS.add(sftp);
+						LISTENERS.add(listen);
+					}
+					sum--;
+				}
+			}
 		}
 
 		@Override
 		protected Void compute() {
-			if (sum > 10) {
-				int leftSum = sum/2;
-				JoinTask left = new JoinTask(leftSum);
-				JoinTask right = new JoinTask(sum - leftSum);
+			if (sum > 8) {
+				int leftSum = sum / 2;
+				RecursiveTask left = new ListTask(leftSum);
+				RecursiveTask right = new ListTask(sum - leftSum);
 				left.fork();
 				right.fork();
 				left.join();
-				return right.join();
+				right.join();
+				return null;
 			}
-			task.run();
+			addList(sum);
 			return null;
 		}
-		
+
+	}
+
+	static class JoinTask extends RecursiveTask<Void> {
+		@Override
+		protected Void compute() {
+			RecursiveTask left = new FileTask();
+			RecursiveTask right = new ListTask(fileServerInfo.getMax());
+			left.fork();
+			right.fork();
+			left.join();
+			right.join();
+			return null;
+		}
+
 	}
 
 	public static void download(String[] args) {
