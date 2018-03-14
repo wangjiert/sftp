@@ -115,6 +115,9 @@ public class SftpClient {
 	private static boolean initList() {
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
 		forkJoinPool.invoke(new ListTask(fileServerInfo.getMax()));
+		System.out.println(FILES.size());
+		System.out.println(CHANNELS.size());
+		System.out.println(LISTENERS.size());
 		// Future<Void> result = forkJoinPool.submit(new JoinTask());
 		// try {
 		// result.get();
