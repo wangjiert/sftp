@@ -258,7 +258,8 @@ public class SftpClient {
 				left.join();
 				right.join();
 			} else {
-				addList(sum);
+				//addList(sum);
+				System.out.println("add");
 			}
 		}
 
