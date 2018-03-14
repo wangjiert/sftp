@@ -200,10 +200,10 @@ public class SftpClient {
 		}
 	}
 
-	static class FileTask extends RecursiveTask<Void> {
+	static class FileTask extends RecursiveTask<String> {
 
 		@Override
-		protected Void compute() {
+		protected String compute() {
 			File localDir = new File(fileServerInfo.getLocalPath());
 			File files[] = localDir.listFiles(new FileFilter() {
 
@@ -217,12 +217,12 @@ public class SftpClient {
 
 			});
 			FILES.addAll(Arrays.asList(files));
-			return null;
+			return "ok";
 		}
 
 	}
 
-	static class ListTask extends RecursiveTask<Void> {
+	static class ListTask extends RecursiveTask<String> {
 		private int sum;
 
 		public ListTask(int sum) {
@@ -246,7 +246,7 @@ public class SftpClient {
 		}
 
 		@Override
-		protected Void compute() {
+		protected String compute() {
 			if (sum > 8) {
 				int leftSum = sum / 2;
 				RecursiveTask left = new ListTask(leftSum);
@@ -255,10 +255,10 @@ public class SftpClient {
 				right.fork();
 				left.join();
 				right.join();
-				return null;
+				return "ok";
 			}
 			addList(sum);
-			return null;
+			return "ok";
 		}
 
 	}
