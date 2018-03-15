@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -28,9 +29,11 @@ public class SftpClient {
 	static Lock lock = new ReentrantLock();
 	private static Logger logger = LogManager.getLogger(SftpClient.class);
 	private static final String CONF_PATH = "conf/conf.properties";
+	private static final String LOGNAME= "finish.log";
 	private static String HOME_PATH;
 	private static FileServerInfo fileServerInfo;
 	public static CountDownLatch endSignal;
+	private static Semaphore semaphore;
 	private static List<ChannelSftp> CHANNELS = new LinkedList<>();
 	private static List<File> FILES = new LinkedList<>();
 	private static List<SftpUtil.SftpProgressMonitorImpl> LISTENERS = new LinkedList<>();
@@ -58,37 +61,46 @@ public class SftpClient {
 			return;
 		}
 		fileServerInfo.setFilePath(fileServerInfo.getFilePath() + "/" + localDir.getName());
+		if (fileServerInfo.getFilePath() == null || fileServerInfo.getFilePath().equals("")) {
+			System.out.println("remote filepath can't be null");
+			return;
+		}
 
 		boolean reachable = checkConnect();
 		if (!reachable) {
 			return;
 		}
 
-		if (!initList()) {
-			return;
-		}
+		initList();
+		if (CHANNELS.size() == fileServerInfo.getMax()) {
+			semaphore = new Semaphore(fileServerInfo.getMax(), true);
+			ExecutorService fixedThreadPool = Executors.newFixedThreadPool(fileServerInfo.getMax());
 
-		if (!checkRemoteDir()) {
-			System.out.printf("can't create required directory: %s, please check log file for reason\n",
-					fileServerInfo.getFilePath());
-			return;
-		}
+			int len = FILES.size();
+			endSignal = new CountDownLatch(len);
+			for (int index = 0; index < len; index++) {
+				try {
+					semaphore.acquire();
+				} catch (InterruptedException e) {
+					logger.error(e.getMessage());
+					continue;
+				}
+				fixedThreadPool.execute(TASK);
+			}
 
-		ExecutorService fixedThreadPool = Executors.newFixedThreadPool(fileServerInfo.getMax());
-
-		int len = FILES.size();
-		endSignal = new CountDownLatch(len);
-		for (int index = 0; index < len; index++) {
-			fixedThreadPool.execute(TASK);
+			try {
+				endSignal.await();
+			} catch (InterruptedException e) {
+				logger.error(e.getMessage());
+				System.out.println("some exception occur, please see log file");
+			}
+			ChannelSftp channel = CHANNELS.remove(0);
+			File logFile = new File(HOME_PATH+LOGNAME);
+			SftpUtil.uploadFile(channel, LISTENERS.remove(0), fileServerInfo.getFilePath(), logFile, ChannelSftp.APPEND);
+			syncChannel(channel);
+			logFile.deleteOnExit();
+			fixedThreadPool.shutdown();
 		}
-
-		try {
-			endSignal.await();
-		} catch (InterruptedException e) {
-			logger.error(e.getMessage());
-			System.out.println("some exception occur, please see log file");
-		}
-		fixedThreadPool.shutdown();
 		clean();
 		System.out.println("finish handle");
 	}
@@ -112,23 +124,9 @@ public class SftpClient {
 		}
 	}
 
-	private static boolean initList() {
+	private static void initList() {
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
 		forkJoinPool.invoke(new JoinTask());
-		System.out.println(FILES.size());
-		System.out.println(CHANNELS.size());
-		System.out.println(LISTENERS.size());
-		// Future<Void> result = forkJoinPool.submit(new JoinTask());
-		// try {
-		// result.get();
-		// forkJoinPool.shutdown();
-		// } catch (InterruptedException | ExecutionException e) {
-		// e.printStackTrace();
-		// logger.error(e.getMessage());
-		// System.out.println("init failed");
-		// return false;
-		// }
-		return true;
 	}
 
 	private static boolean checkConnect() {
@@ -139,12 +137,15 @@ public class SftpClient {
 		return false;
 	}
 
-	private static boolean checkRemoteDir() {
-		fileServerInfo.setFilePath(fileServerInfo.getFilePath().replaceAll("\\\\", "/"));
-		boolean isDirExist = SftpUtil.isDirExist(CHANNELS.get(0), fileServerInfo.getFilePath());
+	private static boolean checkRemoteDir(ChannelSftp channel) {
+		boolean isDirExist = SftpUtil.isDirExist(channel, fileServerInfo.getFilePath());
 		if (!isDirExist) {
 			try {
-				SftpUtil.makeDir(CHANNELS.get(0), fileServerInfo.getFilePath());
+				synchronized (logger) {
+					if (!SftpUtil.isDirExist(channel, fileServerInfo.getFilePath())) {
+						SftpUtil.makeDir(channel, fileServerInfo.getFilePath());
+					}
+				}
 			} catch (SftpException e) {
 				logger.error(e.getMessage());
 				return false;
@@ -198,10 +199,11 @@ public class SftpClient {
 			SftpUtil.SftpProgressMonitorImpl listen = syncListen(null);
 
 			if (file != null && channel != null && listen != null) {
-				SftpUtil.uploadFile(channel, listen, fileServerInfo.getFilePath(), file);
+				SftpUtil.uploadFile(channel, listen, fileServerInfo.getFilePath(), file, ChannelSftp.RESUME);
 				syncChannel(channel);
 				syncListen(listen);
 			}
+			semaphore.release();
 			SftpClient.endSignal.countDown();
 		}
 	}
@@ -240,13 +242,15 @@ public class SftpClient {
 						fileServerInfo.getAccount(), fileServerInfo.getPassword(), fileServerInfo.getPrivateKey(),
 						fileServerInfo.getPassphrase(), fileServerInfo.getTimeout());
 				if (sftp != null) {
+					if (!checkRemoteDir(sftp)) {
+						SftpUtil.disconnected(sftp);
+						break;
+					}
 					SftpUtil.SftpProgressMonitorImpl listen = new SftpUtil.SftpProgressMonitorImpl();
-					// synchronized (SftpClient.endSignal) {
-					lock.lock();
-					CHANNELS.add(sftp);
-					LISTENERS.add(listen);
-					lock.unlock();
-					// }
+					synchronized (SftpClient.logger) {
+						CHANNELS.add(sftp);
+						LISTENERS.add(listen);
+					}
 					sum--;
 				}
 			}

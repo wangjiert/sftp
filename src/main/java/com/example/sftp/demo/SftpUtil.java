@@ -6,6 +6,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -202,46 +204,36 @@ public class SftpUtil {
 		return (ChannelSftp) channel;
 	}
 
-	public static void uploadFile(ChannelSftp sftp, SftpProgressMonitorImpl listen, String remoteFilePath, File file) {
-
-		// 文件路径校验
-		if (remoteFilePath == null || remoteFilePath.equals("")) {
-			System.out.println("remote filepath can't be null");
-			return;
-		}
-
-		// 上传文件
+	public static void uploadFile(ChannelSftp sftp, SftpProgressMonitorImpl listen, String remoteFilePath, File file,
+			int type) {
 		try {
-			sftp.cd(remoteFilePath);
-		} catch (SftpException e) {
-			// TODO Auto-generated catch block
-			logger.error(e.getMessage());
-			return;
-		}
-
-		try {
-			try {
-				SftpATTRS stat = sftp.stat(file.getName());
-				if (stat.getMTime() < file.lastModified() / 1000) {
-					sftp.rm(file.getName());
-				}
-			} catch (SftpException e) {
-				if (!e.getMessage().contains("No such file")) {
-					logger.error(e.getMessage());
-					return;
+			if (type == ChannelSftp.RESUME) {
+				try {
+					SftpATTRS stat = sftp.stat(file.getName());
+					if (stat.getMTime() < file.lastModified() / 1000) {
+						sftp.rm(file.getName());
+					}
+				} catch (SftpException e) {
+					if (!e.getMessage().contains("No such file")) {
+						logger.error(e.getMessage());
+						return;
+					}
 				}
 			}
 			listen.reset();
-			sftp.put(file.getAbsolutePath(), file.getName(), listen, ChannelSftp.RESUME);
+			sftp.put(file.getAbsolutePath(), file.getName(), listen, type);
+			if (listen.getSum() != 0) {
+				new FileRecord(file.getName(), new Date(), listen.getTotal(), listen.getSkip(), listen.getSum()).log();
+			}
 			synchronized (SftpClient.endSignal) {
 				if (listen.getSum() == 0) {
-					System.out.println("skip file " + file.getAbsolutePath());
+					System.out.println("skip file " + file.getName());
 				} else {
 					if (listen.getSkip() > 0) {
 						System.out.printf("file name: %s, file length: %d, skip length: %d, read length: %d\n",
-								file.getAbsolutePath(), listen.getTotal(), listen.getSkip(), listen.getSum());
+								file.getName(), listen.getTotal(), listen.getSkip(), listen.getSum());
 					} else {
-						System.out.printf("file name: %s, file length: %d, read length: %d\n", file.getAbsolutePath(),
+						System.out.printf("file name: %s, file length: %d, read length: %d\n", file.getName(),
 								listen.getTotal(), listen.getSum());
 					}
 				}
@@ -250,7 +242,7 @@ public class SftpUtil {
 			if (e.getMessage().equals("failed to resume for " + remoteFilePath + File.separator + file.getName())) {
 				try {
 					sftp.rm(file.getName());
-					uploadFile(sftp, listen, remoteFilePath, file);
+					uploadFile(sftp, listen, remoteFilePath, file, type);
 				} catch (SftpException e1) {
 					logger.error(e.getMessage());
 				}
@@ -345,6 +337,7 @@ public class SftpUtil {
 		private long sum;
 		private long skip;
 		private boolean init;
+		private boolean append;
 
 		public SftpProgressMonitorImpl() {
 			init = true;
@@ -370,7 +363,7 @@ public class SftpUtil {
 		}
 
 		public boolean count(long count) {
-			if (init && count > 0) {
+			if (!append && init && count > 0) {
 				skip = count;
 				count = 0;
 			}
@@ -384,6 +377,75 @@ public class SftpUtil {
 
 		public void init(int op, String src, String dest, long max) {
 			total = max;
+			if (src.contains("finish.log")) {
+				append= true;
+			}
 		}
+	}
+}
+
+class FileRecord {
+	private static Logger logger = LogManager.getLogger("com.example.sftp.demo.FileRecord");
+	private static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	private String name;
+	private long size;
+	private long skip;
+	private long upload;
+	private Date date;
+
+	public FileRecord(String name, Date date, Long size, long skip, long upload) {
+		this.name = name;
+		this.date = date;
+		this.size = size;
+		this.skip = skip;
+		this.upload = upload;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public long getSize() {
+		return size;
+	}
+
+	public void setSize(long size) {
+		this.size = size;
+	}
+
+	public long getSkip() {
+		return skip;
+	}
+
+	public void setSkip(long skip) {
+		this.skip = skip;
+	}
+
+	public long getUpload() {
+		return upload;
+	}
+
+	public void setUpload(long upload) {
+		this.upload = upload;
+	}
+
+	public Date getDate() {
+		return date;
+	}
+
+	public void setDate(Date date) {
+		this.date = date;
+	}
+
+	public String toString() {
+		return name + "\t" + format.format(date) + "\t" + size + "\t" + skip + "\t" + upload;
+	}
+
+	public void log() {
+		logger.info(String.valueOf(this));
 	}
 }
