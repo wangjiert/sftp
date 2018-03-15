@@ -153,20 +153,6 @@ public class SftpUtil {
 		return result;
 	}
 
-	public static void download(ChannelSftp sftp, FileServerInfo fileServerInfo) {
-
-		try {
-			downloadFile(sftp, fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
-					fileServerInfo.getPassword(), fileServerInfo.getPrivateKey(), fileServerInfo.getPassphrase(),
-					fileServerInfo.getFilePath(), fileServerInfo.getLocalPath(), fileServerInfo.getFileName(),
-					fileServerInfo.getTimeout());
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			disconnected(sftp);
-		}
-	}
-
 	public static ChannelSftp sftpConnect(String sftpHost, int sftpPort, String sftpUserName, String sftpPassword,
 			String privateKey, String passphrase, int timeout) {
 		JSch jsch = new JSch();
@@ -247,47 +233,6 @@ public class SftpUtil {
 					logger.error(e.getMessage());
 				}
 			}
-		}
-	}
-
-	public static void downloadFile(ChannelSftp sftp, String sftpHost, int sftpPort, String sftpUserName,
-			String sftpPassword, String privateKey, String passphrase, String remoteFilePath, String localFilePath,
-			String fileName, int timeout) throws Exception {
-		try {
-			remoteFilePath = remoteFilePath.replaceAll("\\\\", "/");
-			// 文件路径校验
-			if (remoteFilePath == null || remoteFilePath.equals("")) {
-				System.out.println("--[] 远程文件路径不可以为空!");
-			}
-
-			if (localFilePath == null || localFilePath.equals("")) {
-				System.out.println("--[] 本地文件路径不可以为空!");
-				return;
-			}
-
-			// 如果本地文件夹不存在则创建
-			File localFolder = new File(localFilePath);
-			if (!localFolder.exists()) {
-				localFolder.mkdirs();
-			}
-
-			// 下载文件
-			String saveFile = localFilePath + File.separator + fileName;
-			String downloadFile = null;
-			// 客户端：Windows 服务器端：Linux
-			// if(IsWindowsUtil.isWindowsOS()) {
-			// downloadFile = remoteFilePath + "/" + fileName;
-			// }else {
-			// downloadFile = remoteFilePath + File.separator + fileName;
-			// }
-			downloadFile = remoteFilePath + "/" + fileName;
-			if (sftp == null) {
-				sftp = sftpConnect(sftpHost, sftpPort, sftpUserName, sftpPassword, privateKey, passphrase, timeout);
-			}
-			sftp.get(downloadFile, saveFile);
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw e;
 		}
 	}
 

@@ -26,7 +26,6 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.SftpException;
 
 public class SftpClient {
-	static Lock lock = new ReentrantLock();
 	private static Logger logger = LogManager.getLogger(SftpClient.class);
 	private static final String CONF_PATH = "conf/conf.properties";
 	private static final String LOGNAME= "finish.log";
@@ -38,12 +37,34 @@ public class SftpClient {
 	private static List<File> FILES = new LinkedList<>();
 	private static List<SftpUtil.SftpProgressMonitorImpl> LISTENERS = new LinkedList<>();
 	private static Task TASK = new Task();
-
-	public static void main(String[] args) {
-		upload(args);
+	private static final String UPLOAD = "u";
+	private static final String DOWNLOAD = "d";
+	
+	public static List<ChannelSftp> getChannels() {
+		return CHANNELS;
 	}
 
-	public static void upload(String[] args) {
+	public static void main(String[] args) {
+		if (args.length < 2) {
+			System.out.println("exec args num must bigger than 2");
+			return ;
+		}
+		if (args[1] == null || args[1].equals("")) {
+			System.out.println("the second arg must not be null");
+			return ;
+		}
+		if (args[0] == UPLOAD) {
+			upload(args[1]);
+		} else if (args[0] == DOWNLOAD) {
+			Download.work(args[1]);
+		} else {
+			System.out.println("the first arg must be u or d");
+			return ;
+		}
+		
+	}
+
+	public static void upload(String args) {
 		HOME_PATH = System.getProperty("SFTP_HOME");
 		if (HOME_PATH == null || HOME_PATH.equals("")) {
 			System.out.println("please set system property SFTP_HOME");
@@ -83,6 +104,7 @@ public class SftpClient {
 					semaphore.acquire();
 				} catch (InterruptedException e) {
 					logger.error(e.getMessage());
+					index--;
 					continue;
 				}
 				fixedThreadPool.execute(TASK);
@@ -105,13 +127,12 @@ public class SftpClient {
 		System.out.println("finish handle");
 	}
 
-	private static void initFileServerInfo(String args[]) {
+	private static void initFileServerInfo(String args) {
 		Properties prop = new Properties();
 		try (FileInputStream fis = new FileInputStream(HOME_PATH + CONF_PATH);) {
 			prop.load(fis);
-			if (args.length > 0) {
-				prop.setProperty("local.dir", args[0]);
-			}
+				prop.setProperty("local.dir", args);
+			
 			fileServerInfo = new FileServerInfo(prop);
 		} catch (FileNotFoundException e) {
 			// e.printStackTrace();
@@ -285,28 +306,5 @@ public class SftpClient {
 			right.join();
 		}
 
-	}
-
-	public static void download(String[] args) {
-		// String sftpHost = prop.getProperty("remote.host");
-		// Integer sftpPort = Integer.parseInt(prop.getProperty("remote.port"));
-		// String sftpUserName = prop.getProperty("remote.username");
-		// String sftpPassword = prop.getProperty("remote.passwd");
-		// String remoteFilePath = prop.getProperty("remote.dir");
-		// String localFilePath = prop.getProperty("local.dir");
-		// String fileName = args[1];
-		//
-		// FileServerInfo fileServerInfo = new FileServerInfo();
-		// fileServerInfo.setDomain(null);
-		// fileServerInfo.setHost(sftpHost);
-		// fileServerInfo.setPort(sftpPort);
-		// fileServerInfo.setAccount(sftpUserName);
-		// fileServerInfo.setPassword(sftpPassword);
-		// fileServerInfo.setFilePath(remoteFilePath);
-		// fileServerInfo.setLocalPath(localFilePath);
-		// fileServerInfo.setFileName(fileName);
-		//
-		// SftpUtil.download(fileServerInfo);
-		// System.out.println("下载完成，请在"+localFilePath+"目录下查看！");
 	}
 }
