@@ -58,18 +58,20 @@ public class SftpDownload {
 	private static AtomicInteger wg = new AtomicInteger();
 
 	public static void main(String[] args) {
-		//download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads", "/tmp/upload1", 10);
+		// download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads",
+		// "/tmp/upload1", 10);
 		HOME_PATH = System.getProperty("SFTP_HOME");
 		initFileServerInfo(args);
 		if (fileServerInfo == null) {
 			return;
 		}
-		download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(), fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
+		download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
+				fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
 	}
-	
+
 	private static void initFileServerInfo(String args[]) {
 		Properties prop = new Properties();
-		try (FileInputStream fis = new FileInputStream( HOME_PATH+ CONF_PATH);) {
+		try (FileInputStream fis = new FileInputStream(HOME_PATH + CONF_PATH);) {
 			prop.load(fis);
 			if (args.length > 0) {
 				prop.setProperty("remote.dir", args[0]);
@@ -134,7 +136,7 @@ public class SftpDownload {
 		}
 		int index = fileServerInfo.getFilePath().lastIndexOf("/");
 		PREFIX = fileServerInfo.getFilePath().substring(0, index + 1);
-		
+
 		preparedStart(fileServerInfo.getFilePath().substring(index + 1));
 
 		try {
@@ -186,7 +188,6 @@ public class SftpDownload {
 			}
 			for (String name : rFile.getFiles().keySet()) {
 
-				
 				try {
 					if (checkTime(name)) {
 						semaphore.acquire();
@@ -197,7 +198,7 @@ public class SftpDownload {
 					if (rFile.getFiles().get(name).getMTime() >= LogAttr.getMTime()) {
 						continue;
 					}
-					
+
 					File localFile = new File(localDir, name);
 					if (localFile.exists()) {
 						if (!localFile.isFile()) {
@@ -221,9 +222,9 @@ public class SftpDownload {
 		rFile.getDirs().remove(".");
 		rFile.getDirs().remove("..");
 		if (rFile.getDirs().size() > 0) {
-			
+
 			for (String name : rFile.getDirs().keySet()) {
-				
+
 				RemoteFile subDir = new RemoteFile(dirName + "/" + name, rFile.getDirs().get(name));
 				try {
 					semaphore.acquire();
@@ -262,8 +263,9 @@ public class SftpDownload {
 				System.out.println("skip file " + name);
 				return;
 			} else {
-				System.out.printf("file name: %s, file length: %d, skip length: %d, read length: %d\n", name, total, skip, sum);
-				message = name + "\t" + format.format(new Date()) + "\t" + total +"\t" + skip + "\t" + sum+"\n";
+				System.out.printf("file name: %s, file length: %d, skip length: %d, read length: %d\n", name, total,
+						skip, sum);
+				message = name + "\t" + format.format(new Date()) + "\t" + total + "\t" + skip + "\t" + sum + "\n";
 			}
 			if (fos != null) {
 				fos.append(message);
@@ -303,21 +305,37 @@ public class SftpDownload {
 			if (files.size() > 0 && CHANNELS.size() > 0 && LISTENERS.size() > 0) {
 				ChannelSftp sftp = syncChannel(null);
 				SftpProgressMonitorImpl listen = syncListen(null);
+
+				String name = getFile();
+				listen.reset();
 				try {
-					String name = getFile();
-					listen.reset();
 					sftp.get(PREFIX + dirName + "/" + name, LOCAL + dirName + "/" + name, listen, ChannelSftp.RESUME);
 					log(listen.getTotal(), listen.getSkip(), listen.getSum(), name);
-					if (count.decrementAndGet() == 0) {
-						done();
+				} catch (SftpException e) {
+					if (e.getMessage().equals("failed to resume for ")) {
+						new File("LOCAL + dirName + \"/\" + name").deleteOnExit();
+						try {
+							sftp.get(PREFIX + dirName + "/" + name, LOCAL + dirName + "/" + name, listen, ChannelSftp.RESUME);
+							log(listen.getTotal(), listen.getSkip(), listen.getSum(), name);
+						} catch (SftpException e1) {
+							logger.error("", e1);
+						}
+					}
+					logger.error("", e);
+				}
+				if (count.decrementAndGet() == 0) {
+					done();
+					try {
 						sftp.put(LOCAL + dirName + "/download.log", PREFIX + dirName + "/download.log", listen,
 								ChannelSftp.APPEND);
 						log(listen.getTotal(), listen.getSkip(), listen.getSum(), "download.log");
-						new File(LOCAL + dirName + "/download.log").deleteOnExit();
+					} catch (SftpException e) {
+						logger.error("", e);
 					}
-				} catch (SftpException e) {
-					logger.error("", e);
+
+					new File(LOCAL + dirName + "/download.log").deleteOnExit();
 				}
+
 				syncChannel(sftp);
 				syncListen(listen);
 			}
