@@ -169,7 +169,7 @@ public class SftpDownload {
 		if (rFile.getFiles().containsKey(uLogName)) {
 			File localDir = new File(LOCAL + dirName);
 			if (!localDir.exists()) {
-				localDir.mkdir();
+				localDir.mkdirs();
 			} else if (!localDir.isDirectory()) {
 				String errMessage = "file " + localDir + "isn't a directory";
 				logger.error(errMessage);
