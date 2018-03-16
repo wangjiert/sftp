@@ -4,10 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -25,10 +23,6 @@ import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.Layout;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.layout.PatternLayout;
 
 import com.example.sftp.model.FileServerInfo;
 import com.jcraft.jsch.ChannelSftp;
@@ -37,25 +31,28 @@ import com.jcraft.jsch.SftpException;
 import com.jcraft.jsch.SftpProgressMonitor;
 
 public class SftpDownload {
-	public static Logger logger;
-	private static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	private static Logger logger;
+	protected static boolean threadPoolDone;
+	protected static ChannelSftp globalSftp;
+	protected static SftpProgressMonitorImpl globalListen;
 	private static String HOME_PATH;
 	private static final String CONF_PATH = "conf/conf.properties";
 	private static final String dLogName = "download.log";
 	private static final String uLogName = "finish.log";
 	public static String PREFIX = "";
-	public static String LOCAL = "";
+	protected static String LOCAL = "";
 	private static Pattern pattern = Pattern.compile("\\D*(\\d{8})\\D*");
 	private static List<SftpProgressMonitorImpl> LISTENERS = new LinkedList<>();
 	private static List<ChannelSftp> CHANNELS = new LinkedList<>();
 
 	private static FileServerInfo fileServerInfo;
-	private static Semaphore semaphore;
+	protected static Semaphore semaphore;
 
 	private static String deadline;
 	private static ExecutorService fixedThreadPool;
 	private static DeleteTask deleteTask = new DeleteTask();
-	private static AtomicInteger wg = new AtomicInteger();
+	protected static AtomicInteger wg = new AtomicInteger();
+	protected static Map<String, DirRecord> dirRecords = new HashMap<>();
 
 	public static void main(String[] args) {
 		// download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads",
@@ -78,11 +75,11 @@ public class SftpDownload {
 			}
 			fileServerInfo = new FileServerInfo(prop);
 		} catch (FileNotFoundException e) {
-			// e.printStackTrace();
+			logger.error("", e);
 			System.out.println("please be sure config file's path is correct");
 			return;
 		} catch (IOException e) {
-			// e.printStackTrace();
+			logger.error("", e);
 			System.out.printf("read file:%s failed, please retry\n", HOME_PATH + "conf/conf.properties");
 			return;
 		}
@@ -125,9 +122,10 @@ public class SftpDownload {
 		}
 
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
-		forkJoinPool.invoke(new ListTask(fileServerInfo.getMax()));
-
-		if (CHANNELS.size() == fileServerInfo.getMax()) {
+		forkJoinPool.invoke(new ListTask(fileServerInfo.getMax() + 1));
+		if (CHANNELS.size() == fileServerInfo.getMax() +1) {
+			globalSftp = CHANNELS.remove(0);
+			globalListen = LISTENERS.remove(0);
 			semaphore = new Semaphore(fileServerInfo.getMax(), true);
 			fixedThreadPool = Executors.newFixedThreadPool(fileServerInfo.getMax());
 		} else {
@@ -141,7 +139,7 @@ public class SftpDownload {
 
 		try {
 			synchronized (wg) {
-				if (wg.get() > 0) {
+				if (wg.get() > 0 ) {
 					wg.wait();
 				}
 			}
@@ -185,13 +183,14 @@ public class SftpDownload {
 			DownloadTask downloadTask = null;
 			if (fileSize > 0) {
 				downloadTask = new DownloadTask(fileSize, dirName);
+				dirRecords.put(dirName, new DirRecord(dirName));
 			}
 			for (String name : rFile.getFiles().keySet()) {
 
 				try {
 					if (checkTime(name)) {
 						semaphore.acquire();
-						deleteTask.addFile(PREFIX + dirName + "/" + name);
+						DeleteTask.addFile(PREFIX + dirName + "/" + name);
 						fixedThreadPool.submit(deleteTask);
 						continue;
 					}
@@ -219,6 +218,9 @@ public class SftpDownload {
 			}
 			downloadTask = null;
 		}
+		if (dirRecords.get(dirName) != null) {
+			dirRecords.get(dirName).readDone();
+		}
 		rFile.getDirs().remove(".");
 		rFile.getDirs().remove("..");
 		if (rFile.getDirs().size() > 0) {
@@ -242,13 +244,11 @@ public class SftpDownload {
 	}
 
 	static class DownloadTask implements Runnable {
-		private AtomicInteger count = new AtomicInteger();
 		private String dirName;
-		private PrintWriter fos;
 		private List<String> files = new LinkedList<>();
 
 		public synchronized void addFile(String name) {
-			count.incrementAndGet();
+			dirRecords.get(dirName).add();
 			wg.incrementAndGet();
 			files.add(name);
 		}
@@ -257,47 +257,8 @@ public class SftpDownload {
 			return files.remove(0);
 		}
 
-		private synchronized void log(long total, long skip, long sum, String name) {
-			String message = "";
-			if (sum == 0) {
-				System.out.println("skip file " + name);
-				return;
-			} else {
-				System.out.printf("file name: %s, file length: %d, skip length: %d, read length: %d\n", name, total,
-						skip, sum);
-				message = name + "\t" + format.format(new Date()) + "\t" + total + "\t" + skip + "\t" + sum + "\n";
-			}
-			if (fos != null) {
-				fos.append(message);
-			}
-		}
-
-		private void done() {
-			if (fos != null) {
-				fos.flush();
-				fos.close();
-				fos = null;
-			}
-		}
-
 		public DownloadTask(int count, String dirName) {
 			this.dirName = dirName;
-			if (count > 0) {
-				try {
-					File log = new File(LOCAL + dirName + "/" + dLogName);
-					if (log.exists()) {
-						if (!log.isFile()) {
-							log.delete();
-						}
-					} else {
-						log.createNewFile();
-					}
-					fos = new PrintWriter(log);
-
-				} catch (IOException e) {
-					logger.error("", e);
-				}
-			}
 		}
 
 		@Override
@@ -310,51 +271,41 @@ public class SftpDownload {
 				listen.reset();
 				try {
 					sftp.get(PREFIX + dirName + "/" + name, LOCAL + dirName + "/" + name, listen, ChannelSftp.RESUME);
-					log(listen.getTotal(), listen.getSkip(), listen.getSum(), name);
+					dirRecords.get(dirName).transRecord(listen.getTotal(), listen.getSkip(), listen.getSum(), name);
 				} catch (SftpException e) {
 					if (e.getMessage().equals("failed to resume for ")) {
 						new File("LOCAL + dirName + \"/\" + name").deleteOnExit();
 						try {
-							sftp.get(PREFIX + dirName + "/" + name, LOCAL + dirName + "/" + name, listen, ChannelSftp.RESUME);
-							log(listen.getTotal(), listen.getSkip(), listen.getSum(), name);
+							sftp.get(PREFIX + dirName + "/" + name, LOCAL + dirName + "/" + name, listen,
+									ChannelSftp.RESUME);
+							dirRecords.get(dirName).transRecord(listen.getTotal(), listen.getSkip(), listen.getSum(),
+									name);
 						} catch (SftpException e1) {
 							logger.error("", e1);
 						}
 					}
 					logger.error("", e);
 				}
-				if (count.decrementAndGet() == 0) {
-					done();
-					try {
-						sftp.put(LOCAL + dirName + "/download.log", PREFIX + dirName + "/download.log", listen,
-								ChannelSftp.APPEND);
-						log(listen.getTotal(), listen.getSkip(), listen.getSum(), "download.log");
-					} catch (SftpException e) {
-						logger.error("", e);
-					}
-
-					new File(LOCAL + dirName + "/download.log").deleteOnExit();
-				}
-
+				
 				syncChannel(sftp);
 				syncListen(listen);
 			}
-
-			if (wg.decrementAndGet() == 0) {
-				synchronized (wg) {
-					wg.notifyAll();
-				}
-			}
-			semaphore.release();
+			dirRecords.get(dirName).isDone();
 		}
 	}
 
 	static class DeleteTask implements Runnable {
 		private static List<String> files = new LinkedList<>();
 
+		private static String getDirName(String name) {
+			return name.substring(PREFIX.length(), name.lastIndexOf("/"));
+		}
+
 		public static synchronized void addFile(String name) {
 			files.add(name);
 			wg.incrementAndGet();
+			dirRecords.get(getDirName(name)).add();
+			;
 		}
 
 		private synchronized String getName() {
@@ -363,18 +314,20 @@ public class SftpDownload {
 
 		@Override
 		public void run() {
+			String name = getName();
+			String dirName = getDirName(name);
 			if (files.size() > 0 && CHANNELS.size() > 0) {
-				String name = getName();
 				ChannelSftp sftp = syncChannel(null);
 				try {
 					sftp.rm(name);
+					dirRecords.get(dirName).delRecord(name.substring(PREFIX.length()));
 				} catch (SftpException e) {
 					logger.error("", e);
 				}
 				syncChannel(sftp);
 			}
-			semaphore.release();
-			wg.decrementAndGet();
+			dirRecords.get(dirName).isDone();
+			
 		}
 	}
 
@@ -408,6 +361,7 @@ public class SftpDownload {
 					rFile.addFile(entry.getFilename(), entry.getAttrs());
 				}
 				doJob(rFile);
+				threadPoolDone = true;
 			}
 		} catch (SftpException e) {
 			logger.error("", e);
@@ -496,6 +450,9 @@ public class SftpDownload {
 			if (channel.isConnected()) {
 				SftpUtil.disconnected(channel);
 			}
+		}
+		if (globalSftp != null) {
+			SftpUtil.disconnected(globalSftp);
 		}
 		CHANNELS.clear();
 	}
