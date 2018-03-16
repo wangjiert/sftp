@@ -90,9 +90,9 @@ public class DirRecord {
 				fos = null;
 			}
 			try {
+				SftpDownload.globalListen.reset();
 				SftpDownload.globalSftp.put(SftpDownload.LOCAL + dirName + "/download.log", SftpDownload.PREFIX + dirName + "/download.log", SftpDownload.globalListen,
 						ChannelSftp.APPEND);
-				SftpDownload.globalListen.reset();
 				transRecord(SftpDownload.globalListen.getTotal(), SftpDownload.globalListen.getSkip(), SftpDownload.globalListen.getSum(), "download.log");
 			} catch (SftpException e) {
 				logger.error("", e);
