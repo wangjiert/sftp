@@ -33,11 +33,11 @@ public class SftpUtil {
 		try {
 			result = InetAddress.getByName(host).isReachable(timeOut);
 		} catch (UnknownHostException e) {
-			logger.error(e.getMessage());
+			logger.error("", e);
 			System.out.println("Unable to resolve domain name");
 			result = false;
 		} catch (IOException e) {
-			logger.error(e.getMessage());
+			logger.error("", e);
 			System.out.println("Network connection is abnormal");
 			result = false;
 		}
@@ -51,13 +51,13 @@ public class SftpUtil {
 			socket.connect(new InetSocketAddress(host, port));
 			result = true;
 		} catch (IOException e) {
-			logger.error(e.getMessage());
+			logger.error("", e);
 			System.out.println("please check the server,ensure sftp service is normal");
 		} finally {
 			try {
 				socket.close();
 			} catch (IOException e) {
-				logger.error(e.getMessage());
+				logger.error("", e);
 				// todo
 			}
 		}
@@ -183,7 +183,7 @@ public class SftpUtil {
 			channel = session.openChannel("sftp");
 			channel.connect();
 		} catch (JSchException e) {
-			logger.error(e.getMessage());
+			logger.error("", e);
 			System.out.println("can't connect to sftp server, username and password is wrong or network is busy");
 		}
 
@@ -201,7 +201,7 @@ public class SftpUtil {
 					}
 				} catch (SftpException e) {
 					if (!e.getMessage().contains("No such file")) {
-						logger.error(e.getMessage());
+						logger.error("", e);
 						return;
 					}
 				}
@@ -230,7 +230,7 @@ public class SftpUtil {
 					sftp.rm(file.getName());
 					uploadFile(sftp, listen, remoteFilePath, file, type);
 				} catch (SftpException e1) {
-					logger.error(e.getMessage());
+					logger.error("", e);
 				}
 			}
 		}

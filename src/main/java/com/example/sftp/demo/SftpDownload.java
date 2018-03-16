@@ -144,7 +144,7 @@ public class SftpDownload {
 				}
 			}
 		} catch (InterruptedException e) {
-			logger.error(e.getMessage());
+			logger.error("", e);
 		}
 		fixedThreadPool.shutdown();
 		clean();
@@ -158,7 +158,7 @@ public class SftpDownload {
 				rFile.addFile(entry.getFilename(), entry.getAttrs());
 			}
 		} catch (SftpException e) {
-			logger.error(e.getMessage());
+			logger.error("", e);
 			System.out.printf("something go wrong, reason: %s\n", e.getMessage());
 		}
 	}
@@ -169,7 +169,7 @@ public class SftpDownload {
 		if (rFile.getFiles().containsKey(uLogName)) {
 			File localDir = new File(LOCAL + dirName);
 			if (!localDir.exists()) {
-				localDir.mkdirs();
+				localDir.mkdir();
 			} else if (!localDir.isDirectory()) {
 				String errMessage = "file " + localDir + "isn't a directory";
 				logger.error(errMessage);
@@ -212,7 +212,7 @@ public class SftpDownload {
 					downloadTask.addFile(name);
 					fixedThreadPool.submit(downloadTask);
 				} catch (InterruptedException e) {
-					logger.error(e.getMessage());
+					logger.error("", e);
 					continue;
 				}
 			}
@@ -232,7 +232,7 @@ public class SftpDownload {
 					syncChannel(sftp);
 					semaphore.release();
 				} catch (InterruptedException e) {
-					logger.error(e.getMessage());
+					logger.error("", e);
 					continue;
 				}
 				doJob(subDir);
@@ -293,7 +293,7 @@ public class SftpDownload {
 					fos = new PrintWriter(log);
 
 				} catch (IOException e) {
-					logger.error(e.getMessage());
+					logger.error("", e);
 				}
 			}
 		}
@@ -316,7 +316,7 @@ public class SftpDownload {
 						new File(LOCAL + dirName + "/download.log").deleteOnExit();
 					}
 				} catch (SftpException e) {
-					logger.error(e.getMessage());
+					logger.error("", e);
 				}
 				syncChannel(sftp);
 				syncListen(listen);
@@ -351,7 +351,7 @@ public class SftpDownload {
 				try {
 					sftp.rm(name);
 				} catch (SftpException e) {
-					logger.error(e.getMessage());
+					logger.error("", e);
 				}
 				syncChannel(sftp);
 			}
@@ -392,7 +392,7 @@ public class SftpDownload {
 				doJob(rFile);
 			}
 		} catch (SftpException e) {
-			logger.error(e.getMessage());
+			logger.error("", e);
 			System.out.println(e.getMessage());
 		}
 		if (sftp != null) {
