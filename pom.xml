@@ -46,7 +46,7 @@
 						<manifest>
 							<addClasspath>true</addClasspath>
 							<classpathPrefix>lib/</classpathPrefix>
-							<mainClass>com.example.sftp.demo.SftpClient</mainClass>
+							<mainClass>com.example.sftp.demo.SftpDownload</mainClass>
 						</manifest>
 					</archive>
 				</configuration>

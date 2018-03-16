@@ -17,7 +17,18 @@ public class FileServerInfo {
 	private int timeout;
 	private String privateKey;
 	private String passphrase;
-
+	
+	public FileServerInfo(String host, int port, String username, String password, String localPath, String remoteDir, int max) {
+        this.host = host;
+        this.port = port;
+        this.account = username;
+        this.password = password;
+        this.localPath = localPath;
+        this.filePath = remoteDir;
+        this.max = max;
+        this.timeout = 60000;
+    }
+	
 	public FileServerInfo(Properties prop) {
 		this.host = prop.getProperty("remote.host");
 		this.port = Integer.parseInt(prop.getProperty("remote.port", "22"));

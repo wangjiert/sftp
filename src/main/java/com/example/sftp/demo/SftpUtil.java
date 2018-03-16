@@ -211,7 +211,7 @@ public class SftpUtil {
 			if (listen.getSum() != 0) {
 				new FileRecord(file.getName(), new Date(), listen.getTotal(), listen.getSkip(), listen.getSum()).log();
 			}
-			synchronized (SftpClient.endSignal) {
+			synchronized (SftpUpload.endSignal) {
 				if (listen.getSum() == 0) {
 					System.out.println("skip file " + file.getName());
 				} else {

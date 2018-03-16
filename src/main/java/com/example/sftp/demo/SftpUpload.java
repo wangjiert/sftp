@@ -25,10 +25,11 @@ import com.example.sftp.model.FileServerInfo;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.SftpException;
 
-public class SftpClient {
-	private static Logger logger = LogManager.getLogger(SftpClient.class);
+public class SftpUpload {
+	static Lock lock = new ReentrantLock();
+	private static Logger logger;
 	private static final String CONF_PATH = "conf/conf.properties";
-	private static final String LOGNAME= "finish.log";
+	private static final String LOGNAME = "finish.log";
 	private static String HOME_PATH;
 	private static FileServerInfo fileServerInfo;
 	public static CountDownLatch endSignal;
@@ -37,43 +38,28 @@ public class SftpClient {
 	private static List<File> FILES = new LinkedList<>();
 	private static List<SftpUtil.SftpProgressMonitorImpl> LISTENERS = new LinkedList<>();
 	private static Task TASK = new Task();
-	private static final String UPLOAD = "u";
-	private static final String DOWNLOAD = "d";
-	
-	public static List<ChannelSftp> getChannels() {
-		return CHANNELS;
+
+	public static void up(String ip, int port, String username, String password, String localPath, String remoteDir,
+			int maxThread) {
+		fileServerInfo = new FileServerInfo(ip, port, username, password, localPath, remoteDir, maxThread);
+		File f = new File("");
+		System.setProperty("SFTP_HOME", f.getAbsolutePath()+"/");
+		upload(null);
 	}
 
-	public static void main(String[] args) {
-		if (args.length < 2) {
-			System.out.println("exec args num must bigger than 2");
-			return ;
-		}
-		if (args[1] == null || args[1].equals("")) {
-			System.out.println("the second arg must not be null");
-			return ;
-		}
-		if (args[0] == UPLOAD) {
-			upload(args[1]);
-		} else if (args[0] == DOWNLOAD) {
-			Download.work(args[1]);
-		} else {
-			System.out.println("the first arg must be u or d");
-			return ;
-		}
-		
-	}
-
-	public static void upload(String args) {
+	public static void upload(String[] args) {
+		logger = LogManager.getLogger(SftpUpload.class);
 		HOME_PATH = System.getProperty("SFTP_HOME");
 		if (HOME_PATH == null || HOME_PATH.equals("")) {
 			System.out.println("please set system property SFTP_HOME");
 			return;
 		}
 
-		initFileServerInfo(args);
-		if (fileServerInfo == null) {
-			return;
+		if (args != null) {
+			initFileServerInfo(args);
+			if (fileServerInfo == null) {
+				return;
+			}
 		}
 
 		File localDir = new File(fileServerInfo.getLocalPath());
@@ -86,12 +72,11 @@ public class SftpClient {
 			System.out.println("remote filepath can't be null");
 			return;
 		}
-
+		
 		boolean reachable = checkConnect();
 		if (!reachable) {
 			return;
 		}
-
 		initList();
 		if (CHANNELS.size() == fileServerInfo.getMax()) {
 			semaphore = new Semaphore(fileServerInfo.getMax(), true);
@@ -104,7 +89,6 @@ public class SftpClient {
 					semaphore.acquire();
 				} catch (InterruptedException e) {
 					logger.error(e.getMessage());
-					index--;
 					continue;
 				}
 				fixedThreadPool.execute(TASK);
@@ -117,8 +101,9 @@ public class SftpClient {
 				System.out.println("some exception occur, please see log file");
 			}
 			ChannelSftp channel = CHANNELS.remove(0);
-			File logFile = new File(HOME_PATH+LOGNAME);
-			SftpUtil.uploadFile(channel, LISTENERS.remove(0), fileServerInfo.getFilePath(), logFile, ChannelSftp.APPEND);
+			File logFile = new File(HOME_PATH + LOGNAME);
+			SftpUtil.uploadFile(channel, LISTENERS.remove(0), fileServerInfo.getFilePath(), logFile,
+					ChannelSftp.APPEND);
 			syncChannel(channel);
 			logFile.deleteOnExit();
 			fixedThreadPool.shutdown();
@@ -127,12 +112,13 @@ public class SftpClient {
 		System.out.println("finish handle");
 	}
 
-	private static void initFileServerInfo(String args) {
+	private static void initFileServerInfo(String args[]) {
 		Properties prop = new Properties();
 		try (FileInputStream fis = new FileInputStream(HOME_PATH + CONF_PATH);) {
 			prop.load(fis);
-				prop.setProperty("local.dir", args);
-			
+			if (args.length > 0) {
+				prop.setProperty("local.dir", args[0]);
+			}
 			fileServerInfo = new FileServerInfo(prop);
 		} catch (FileNotFoundException e) {
 			// e.printStackTrace();
@@ -225,7 +211,7 @@ public class SftpClient {
 				syncListen(listen);
 			}
 			semaphore.release();
-			SftpClient.endSignal.countDown();
+			SftpUpload.endSignal.countDown();
 		}
 	}
 
@@ -268,7 +254,7 @@ public class SftpClient {
 						break;
 					}
 					SftpUtil.SftpProgressMonitorImpl listen = new SftpUtil.SftpProgressMonitorImpl();
-					synchronized (SftpClient.logger) {
+					synchronized (SftpUpload.logger) {
 						CHANNELS.add(sftp);
 						LISTENERS.add(listen);
 					}

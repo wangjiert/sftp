@@ -1,4 +1,0 @@
-#!/bin/sh
-mvn package
-rm *.log
-tar -cvzf /mnt/vpn/sftp/sftp.tar.gz .
