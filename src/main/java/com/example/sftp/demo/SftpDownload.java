@@ -57,6 +57,10 @@ public class SftpDownload {
 	public static void main(String[] args) {
 		// download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads",
 		// "/tmp/upload1", 10);
+		if (args[1].equals("u")) {
+			SftpUpload.upload(args);
+			return;
+		}
 		HOME_PATH = System.getProperty("SFTP_HOME");
 		initFileServerInfo(args);
 		if (fileServerInfo == null) {
@@ -88,7 +92,7 @@ public class SftpDownload {
 	public static void download(String ip, int port, String username, String password, String localPath,
 			String remoteDir, int maxThread) {
 		if (fileServerInfo == null) {
-			fileServerInfo = new FileServerInfo(ip, port, username, password, localPath, remoteDir, maxThread);
+			fileServerInfo = new FileServerInfo(ip, port, username, password, localPath, remoteDir, maxThread, 1);
 			File pwd = new File("");
 			System.setProperty("SFTP_HOME", pwd.getAbsolutePath());
 		}
@@ -188,16 +192,9 @@ public class SftpDownload {
 			for (String name : rFile.getFiles().keySet()) {
 
 				try {
-					if (checkTime(name)) {
-						semaphore.acquire();
-						DeleteTask.addFile(PREFIX + dirName + "/" + name);
-						fixedThreadPool.submit(deleteTask);
-						continue;
-					}
 					if (rFile.getFiles().get(name).getMTime() >= LogAttr.getMTime()) {
 						continue;
 					}
-
 					File localFile = new File(localDir, name);
 					if (localFile.exists()) {
 						if (!localFile.isFile()) {
@@ -211,6 +208,12 @@ public class SftpDownload {
 					semaphore.acquire();
 					downloadTask.addFile(name);
 					fixedThreadPool.submit(downloadTask);
+					if (checkTime(name)) {
+						semaphore.acquire();
+						DeleteTask.addFile(PREFIX + dirName + "/" + name);
+						fixedThreadPool.submit(deleteTask);
+						continue;
+					}
 				} catch (InterruptedException e) {
 					logger.error("", e);
 					continue;
@@ -290,7 +293,7 @@ public class SftpDownload {
 				syncChannel(sftp);
 				syncListen(listen);
 			}
-			dirRecords.get(dirName).isDone();
+			dirRecords.get(dirName).isDone(false);
 		}
 	}
 
@@ -305,7 +308,6 @@ public class SftpDownload {
 			files.add(name);
 			wg.incrementAndGet();
 			dirRecords.get(getDirName(name)).add();
-			;
 		}
 
 		private synchronized String getName() {
@@ -326,7 +328,7 @@ public class SftpDownload {
 				}
 				syncChannel(sftp);
 			}
-			dirRecords.get(dirName).isDone();
+			dirRecords.get(dirName).isDone(false);
 			
 		}
 	}
@@ -334,7 +336,7 @@ public class SftpDownload {
 	private static void initDate() {
 		SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd");
 		Calendar calendar = Calendar.getInstance();
-		calendar.add(Calendar.DATE, -1);
+		calendar.add(Calendar.DATE, -fileServerInfo.getDay());
 		deadline = format.format(calendar.getTime());
 	}
 

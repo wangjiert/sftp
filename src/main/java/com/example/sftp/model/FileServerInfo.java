@@ -17,8 +17,9 @@ public class FileServerInfo {
 	private int timeout;
 	private String privateKey;
 	private String passphrase;
+	private int day;
 	
-	public FileServerInfo(String host, int port, String username, String password, String localPath, String remoteDir, int max) {
+	public FileServerInfo(String host, int port, String username, String password, String localPath, String remoteDir, int max, int day) {
         this.host = host;
         this.port = port;
         this.account = username;
@@ -27,6 +28,7 @@ public class FileServerInfo {
         this.filePath = remoteDir;
         this.max = max;
         this.timeout = 60000;
+        this.day = day;
     }
 	
 	public FileServerInfo(Properties prop) {
@@ -40,8 +42,13 @@ public class FileServerInfo {
 		this.privateKey = prop.getProperty("key.path");
 		this.passphrase = prop.getProperty("key.pwd");
 		this.timeout = Integer.parseInt(prop.getProperty("remote.timeout", "60000"));
+		this.day = Integer.parseInt(prop.getProperty("day", "1"));
 	}
 
+	public int getDay() {
+		return this.day;
+	}
+	
 	public String getHost() {
 		return host;
 	}

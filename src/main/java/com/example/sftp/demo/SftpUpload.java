@@ -41,7 +41,7 @@ public class SftpUpload {
 
 	public static void up(String ip, int port, String username, String password, String localPath, String remoteDir,
 			int maxThread) {
-		fileServerInfo = new FileServerInfo(ip, port, username, password, localPath, remoteDir, maxThread);
+		fileServerInfo = new FileServerInfo(ip, port, username, password, localPath, remoteDir, maxThread, 1);
 		File f = new File("");
 		System.setProperty("SFTP_HOME", f.getAbsolutePath()+"/");
 		upload(null);
