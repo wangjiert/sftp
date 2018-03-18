@@ -59,19 +59,19 @@ public class SftpDownload {
 
 	public static void main(String[] args) {
 		System.out.print("~~~~");
-		 download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads",
-		 "/tmp/upload1", 10);
-//		if (args[1].equals("u")) {
-//			SftpUpload.upload(args);
-//			return;
-//		}
-//		HOME_PATH = System.getProperty("SFTP_HOME");
-//		initFileServerInfo(args);
-//		if (fileServerInfo == null) {
-//			return;
-//		}
-//		download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
-//				fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
+		 //download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads",
+		 //"/tmp/upload1", 10);
+		if (args[1].equals("u")) {
+			SftpUpload.upload(args);
+			return;
+		}
+		HOME_PATH = System.getProperty("SFTP_HOME");
+		initFileServerInfo(args);
+		if (fileServerInfo == null) {
+			return;
+		}
+		download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
+				fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
 	}
 
 	private static void initFileServerInfo(String args[]) {
