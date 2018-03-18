@@ -6,6 +6,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.logging.log4j.LogManager;
@@ -23,14 +27,53 @@ public class DirRecord {
 	private Boolean readDone;
 
 	protected DirRecord(String dirName) {
+		SftpDownload.wg.incrementAndGet();
 		this.dirName = dirName;
 		getPrint();
 	}
 
-	protected void readDone() {
-		this.readDone = true;
-		if (count.get() == 0) {
-			isDone(true);
+	protected synchronized void checkFinish(ChannelSftp sftp, SftpProgressMonitorImpl listen, boolean done) {
+		int remain = 1;
+		if (done) {
+			this.readDone = true;
+			remain = count.get();
+		} else {
+			remain = count.decrementAndGet();
+		}
+
+		if (this.readDone && remain == 0) {
+			if (fos != null) {
+				fos.flush();
+				fos.close();
+				fos = null;
+			}
+			if (sftp == null || listen == null) {
+				sftp = SftpDownload.globalTransSftp;
+				listen = SftpDownload.globalTransListen;
+			}
+			synchronized (sftp) {
+				finishJob(sftp, listen);
+			}
+			SftpDownload.dirRecords.remove(dirName);
+			synchronized (SftpDownload.wg) {
+				if (SftpDownload.wg.decrementAndGet() == 0 && SftpDownload.threadPoolDone) {
+					SftpDownload.wg.notify();
+				}
+			}
+		}
+		SftpDownload.semaphore.release();
+	}
+
+	private void finishJob(ChannelSftp sftp, SftpProgressMonitorImpl listen) {
+		listen.reset();
+		try {
+			sftp.put(SftpDownload.LOCAL + dirName + "/download.log", SftpDownload.PREFIX + dirName + "/download.log",
+					listen, ChannelSftp.APPEND);
+			transRecord(listen.getTotal(), listen.getSkip(),
+					listen.getSum(), "download.log");
+			new File(SftpDownload.LOCAL + dirName + "/download.log").deleteOnExit();
+		} catch (SftpException e) {
+			logger.error("", e);
 		}
 	}
 
@@ -85,52 +128,4 @@ public class DirRecord {
 		count.incrementAndGet();
 	}
 
-	protected synchronized void isDone(boolean wg) {
-		if (wg) {
-			if (fos != null) {
-				fos.flush();
-				fos.close();
-				fos = null;
-			}
-			try {
-				SftpDownload.globalListen.reset();
-				SftpDownload.globalSftp.put(SftpDownload.LOCAL + dirName + "/download.log",
-						SftpDownload.PREFIX + dirName + "/download.log", SftpDownload.globalListen, ChannelSftp.APPEND);
-				transRecord(SftpDownload.globalListen.getTotal(), SftpDownload.globalListen.getSkip(),
-						SftpDownload.globalListen.getSum(), "download.log");
-			} catch (SftpException e) {
-				logger.error("", e);
-			}
-
-			new File(SftpDownload.LOCAL + dirName + "/download.log").deleteOnExit();
-			SftpDownload.dirRecords.remove(dirName);
-			return;
-		}
-		if ( count.decrementAndGet() == 0 && readDone) {
-			if (fos != null) {
-				fos.flush();
-				fos.close();
-				fos = null;
-			}
-			try {
-				SftpDownload.globalListen.reset();
-				SftpDownload.globalSftp.put(SftpDownload.LOCAL + dirName + "/download.log",
-						SftpDownload.PREFIX + dirName + "/download.log", SftpDownload.globalListen, ChannelSftp.APPEND);
-				transRecord(SftpDownload.globalListen.getTotal(), SftpDownload.globalListen.getSkip(),
-						SftpDownload.globalListen.getSum(), "download.log");
-			} catch (SftpException e) {
-				logger.error("", e);
-			}
-
-			new File(SftpDownload.LOCAL + dirName + "/download.log").deleteOnExit();
-			SftpDownload.dirRecords.remove(dirName);
-		}
-		synchronized (SftpDownload.wg) {
-			if (SftpDownload.wg.decrementAndGet() == 0 && SftpDownload.threadPoolDone) {
-
-				SftpDownload.wg.notify();
-			}
-		}
-		SftpDownload.semaphore.release();
-	}
 }
