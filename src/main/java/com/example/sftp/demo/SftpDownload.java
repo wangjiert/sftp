@@ -58,7 +58,6 @@ public class SftpDownload {
 	protected static Map<String, DirRecord> dirRecords = new HashMap<>();
 
 	public static void main(String[] args) {
-		System.out.print("~~~~");
 		 //download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads",
 		 //"/tmp/upload1", 10);
 		if (args[1].equals("u")) {
@@ -130,7 +129,7 @@ public class SftpDownload {
 		}
 
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
-		forkJoinPool.invoke(new ListTask(fileServerInfo.getMax() + 1));
+		forkJoinPool.invoke(new ListTask(fileServerInfo.getMax() + 2));
 		if (CHANNELS.size() == fileServerInfo.getMax() + 2) {
 			globalTransSftp = CHANNELS.remove(0);
 			globalTransListen = LISTENERS.remove(0);
@@ -144,7 +143,6 @@ public class SftpDownload {
 		}
 		int index = fileServerInfo.getFilePath().lastIndexOf("/");
 		PREFIX = fileServerInfo.getFilePath().substring(0, index + 1);
-
 		preparedStart(fileServerInfo.getFilePath().substring(index + 1));
 
 		try {
@@ -308,10 +306,10 @@ public class SftpDownload {
 				}
 			}
 
-			syncChannel(sftp);
-			syncListen(listen);
-
 			dirRecords.get(dirName).checkFinish(sftp, listen, false);
+			syncListen(listen);
+			
+			semaphore.release();
 		}
 	}
 
@@ -406,7 +404,7 @@ public class SftpDownload {
 
 	}
 
-	private synchronized static ChannelSftp syncChannel(ChannelSftp channel) {
+	protected synchronized static ChannelSftp syncChannel(ChannelSftp channel) {
 		if (channel != null) {
 			CHANNELS.add(channel);
 			return null;

@@ -20,7 +20,7 @@ public class DirRecord {
 	private String dirName;
 	private AtomicInteger count = new AtomicInteger();
 	private PrintWriter fos;
-	private Boolean readDone;
+	private boolean readDone;
 
 	protected DirRecord(String dirName) {
 		SftpDownload.wg.incrementAndGet();
@@ -30,13 +30,13 @@ public class DirRecord {
 
 	protected synchronized void checkFinish(ChannelSftp sftp, SftpProgressMonitorImpl listen, boolean done) {
 		int remain = 1;
+		
 		if (done) {
 			this.readDone = true;
 			remain = count.get();
 		} else {
 			remain = count.decrementAndGet();
 		}
-
 		if (this.readDone && remain == 0) {
 			if (fos != null) {
 				fos.flush();
@@ -51,13 +51,20 @@ public class DirRecord {
 				finishJob(sftp, listen);
 			}
 			SftpDownload.dirRecords.remove(dirName);
+
+			
 			synchronized (SftpDownload.wg) {
 				if (SftpDownload.wg.decrementAndGet() == 0 && SftpDownload.threadPoolDone) {
+					SftpDownload.syncChannel(sftp);
 					SftpDownload.wg.notify();
+					return;
 				}
 			}
 		}
-		SftpDownload.semaphore.release();
+		
+		if ( !done ) {
+			SftpDownload.syncChannel(sftp);
+		}
 	}
 
 	private void finishJob(ChannelSftp sftp, SftpProgressMonitorImpl listen) {
