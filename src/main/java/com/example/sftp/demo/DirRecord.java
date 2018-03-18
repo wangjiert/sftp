@@ -99,13 +99,17 @@ public class DirRecord {
 
 	protected void transRecord(long total, long skip, long sum, String name) {
 		String message = "";
+		
 		if (sum == 0) {
+			name = SftpDownload.PREFIX + dirName + "/" + name;
 			System.out.println("skip file " + name);
 			return;
 		} else {
+			message = name + "\t" + format.format(new Date()) + "\t" + total + "\t" + skip + "\t" + sum + "\n";
+			name = SftpDownload.PREFIX + dirName + "/" + name;
 			System.out.printf("file name: %s, file length: %d, skip length: %d, read length: %d\n", name, total, skip,
 					sum);
-			message = name + "\t" + format.format(new Date()) + "\t" + total + "\t" + skip + "\t" + sum + "\n";
+			
 		}
 		if (fos != null) {
 			fos.append(message);
@@ -113,7 +117,7 @@ public class DirRecord {
 	}
 
 	protected void delRecord(String name) {
-		String message = "delete remote file: " + name + "\n";
+		String message = "delete remote file: " + SftpDownload.PREFIX + dirName + "/" + name + "\n";
 		System.out.printf(message);
 		if (fos != null) {
 			fos.append(message);
