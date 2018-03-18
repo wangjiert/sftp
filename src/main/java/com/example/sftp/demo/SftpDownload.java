@@ -58,19 +58,20 @@ public class SftpDownload {
 	protected static Map<String, DirRecord> dirRecords = new HashMap<>();
 
 	public static void main(String[] args) {
-		// download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads",
-		// "/tmp/upload1", 10);
-		if (args[1].equals("u")) {
-			SftpUpload.upload(args);
-			return;
-		}
-		HOME_PATH = System.getProperty("SFTP_HOME");
-		initFileServerInfo(args);
-		if (fileServerInfo == null) {
-			return;
-		}
-		download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
-				fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
+		System.out.print("~~~~");
+		 download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads",
+		 "/tmp/upload1", 10);
+//		if (args[1].equals("u")) {
+//			SftpUpload.upload(args);
+//			return;
+//		}
+//		HOME_PATH = System.getProperty("SFTP_HOME");
+//		initFileServerInfo(args);
+//		if (fileServerInfo == null) {
+//			return;
+//		}
+//		download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
+//				fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
 	}
 
 	private static void initFileServerInfo(String args[]) {
@@ -197,8 +198,7 @@ public class SftpDownload {
 				DownloadTask downloadTask = null;
 				if (fileSize > 0) {
 					downloadTask = new DownloadTask(fileSize, dirName);
-					DirRecord dirRecord = new DirRecord(dirName);
-					dirRecords.put(dirName, dirRecord);
+					dirRecords.put(dirName, new DirRecord(dirName));
 
 					for (String name : rFile.getFiles().keySet()) {
 
@@ -259,7 +259,7 @@ public class SftpDownload {
 		protected synchronized void addDelFile(String name) {
 			this.delFiles.add(name);
 		}
-		
+
 		private synchronized boolean isDeleted(String name) {
 			if (delFiles.contains(name)) {
 				delFiles.remove(name);
@@ -303,8 +303,9 @@ public class SftpDownload {
 					} catch (SftpException e1) {
 						logger.error("", e1);
 					}
+				} else {
+					logger.error("", e);
 				}
-				logger.error("", e);
 			}
 
 			syncChannel(sftp);
