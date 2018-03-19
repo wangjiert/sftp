@@ -30,7 +30,7 @@ public class DirRecord {
 
 	protected synchronized void checkFinish(ChannelSftp sftp, SftpProgressMonitorImpl listen, boolean done) {
 		int remain = 1;
-		
+
 		if (done) {
 			this.readDone = true;
 			remain = count.get();
@@ -43,26 +43,27 @@ public class DirRecord {
 				fos.close();
 				fos = null;
 			}
-			if (sftp == null || listen == null) {
-				sftp = SftpDownload.globalTransSftp;
-				listen = SftpDownload.globalTransListen;
-			}
-			synchronized (sftp) {
-				finishJob(sftp, listen);
+			if (fos != null) {
+				if (sftp == null || listen == null) {
+					sftp = SftpDownload.globalTransSftp;
+					listen = SftpDownload.globalTransListen;
+				}
+				synchronized (sftp) {
+					finishJob(sftp, listen);
+				}
 			}
 			SftpDownload.dirRecords.remove(dirName);
 
-			
 			synchronized (SftpDownload.wg) {
 				if (SftpDownload.wg.decrementAndGet() == 0 && SftpDownload.threadPoolDone) {
 					SftpDownload.syncChannel(sftp);
-					SftpDownload.wg.notify();
+					SftpDownload.wg.notifyAll();
 					return;
 				}
 			}
 		}
-		
-		if ( !done ) {
+
+		if (!done) {
 			SftpDownload.syncChannel(sftp);
 		}
 	}
@@ -72,12 +73,12 @@ public class DirRecord {
 		try {
 			sftp.put(SftpDownload.LOCAL + dirName + "/download.log", SftpDownload.PREFIX + dirName + "/download.log",
 					listen, ChannelSftp.APPEND);
-			transRecord(listen.getTotal(), listen.getSkip(),
-					listen.getSum(), "download.log");
+			transRecord(listen.getTotal(), listen.getSkip(), listen.getSum(), "download.log");
 			new File(SftpDownload.LOCAL + dirName + "/download.log").deleteOnExit();
 		} catch (SftpException e) {
 			logger.error("", e);
 		}
+
 	}
 
 	private void getPrint() {
@@ -106,7 +107,7 @@ public class DirRecord {
 
 	protected void transRecord(long total, long skip, long sum, String name) {
 		String message = "";
-		
+
 		if (sum == 0) {
 			name = SftpDownload.PREFIX + dirName + "/" + name;
 			System.out.println("skip file " + name);
@@ -116,7 +117,7 @@ public class DirRecord {
 			name = SftpDownload.PREFIX + dirName + "/" + name;
 			System.out.printf("file name: %s, file length: %d, skip length: %d, read length: %d\n", name, total, skip,
 					sum);
-			
+
 		}
 		if (fos != null) {
 			fos.append(message);

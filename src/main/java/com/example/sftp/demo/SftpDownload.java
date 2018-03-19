@@ -279,7 +279,7 @@ public class SftpDownload {
 			sftp.get(PREFIX + dirName + "/" + name, LOCAL + dirName + "/" + name, listen, ChannelSftp.RESUME);
 			dirRecord.transRecord(listen.getTotal(), listen.getSkip(), listen.getSum(), name);
 			if (isDeleted(name)) {
-				sftp.rm(SftpDownload.LOCAL + dirName + "/" + name);
+				sftp.rm(SftpDownload.PREFIX + dirName + "/" + name);
 				dirRecord.delRecord(name);
 			}
 		}
