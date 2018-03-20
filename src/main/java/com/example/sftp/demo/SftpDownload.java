@@ -295,14 +295,14 @@ public class SftpDownload {
 				doSftp(sftp, listen, dirRecords.get(dirName), name);
 			} catch (SftpException e) {
 				if (e.getMessage().equals("failed to resume for ")) {
-					new File("LOCAL + dirName + \"/\" + name").deleteOnExit();
+					new File(LOCAL + dirName + "/" + name).deleteOnExit();
 					try {
 						doSftp(sftp, listen, dirRecords.get(dirName), name);
 					} catch (SftpException e1) {
 						logger.error("", e1);
 					}
 				} else {
-					logger.error("", e);
+					logger.error(name, e);
 				}
 			}
 
