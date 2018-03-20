@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -60,6 +61,9 @@ public class SftpDownload {
 	public static void main(String[] args) {
 		 //download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads",
 		 //"/tmp/upload1", 10);
+		System.out.println("=============================================================================");
+		System.out.printf("=========begin new transmission======time:%s====\n", new Date().toString());
+		System.out.println("=============================================================================");
 		if (args[1].equals("u")) {
 			SftpUpload.upload(args);
 			return;
@@ -71,6 +75,10 @@ public class SftpDownload {
 		}
 		download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
 				fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
+		
+		System.out.println("=============================================================================");
+		System.out.printf("=========end new transmission=======time:%s=======\n", new Date().toString());
+		System.out.println("=============================================================================");
 	}
 
 	private static void initFileServerInfo(String args[]) {
@@ -83,11 +91,11 @@ public class SftpDownload {
 			fileServerInfo = new FileServerInfo(prop);
 		} catch (FileNotFoundException e) {
 			logger.error("", e);
-			System.out.println("please be sure config file's path is correct");
+			System.out.printf("time:%s, thread :%s, please be sure config file's path is correct\n", new Date().toString(), Thread.currentThread().getName());
 			return;
 		} catch (IOException e) {
 			logger.error("", e);
-			System.out.printf("read file:%s failed, please retry\n", HOME_PATH + "conf/conf.properties");
+			System.out.printf("time:%s, thread :%s, read file:%s failed, please retry\n", new Date().toString(), Thread.currentThread().getName(), HOME_PATH + "conf/conf.properties");
 			return;
 		}
 	}
@@ -105,11 +113,11 @@ public class SftpDownload {
 		File localDir = new File(fileServerInfo.getLocalPath());
 		if (!localDir.exists()) {
 			if (!localDir.mkdirs()) {
-				System.out.printf("can't create required directory: %s", localDir.getAbsolutePath());
+				System.out.printf("time:%s, thread :%s, can't create required directory: %s\n", new Date().toString(), Thread.currentThread().getName(), localDir.getAbsolutePath());
 				return;
 			}
 		} else if (!localDir.isDirectory()) {
-			System.out.printf("local dir: %s isn't a directory", localDir.getAbsolutePath());
+			System.out.printf("time:%s, thread :%s, local dir: %s isn't a directory\n", new Date().toString(), Thread.currentThread().getName(), localDir.getAbsolutePath());
 			return;
 		}
 
@@ -119,7 +127,7 @@ public class SftpDownload {
 		}
 
 		if (fileServerInfo.getFilePath() == null || fileServerInfo.getFilePath().equals("")) {
-			System.out.println("remote filepath can't be null");
+			System.out.printf("time:%s, thread :%s, remote filepath can't be null\n", new Date().toString(), Thread.currentThread().getName());
 			return;
 		}
 
@@ -157,7 +165,6 @@ public class SftpDownload {
 		}
 		fixedThreadPool.shutdown();
 		clean();
-		System.out.println("finish handle");
 	}
 
 	public static void remoteInfo(RemoteFile rFile) {
@@ -168,7 +175,7 @@ public class SftpDownload {
 			}
 		} catch (SftpException e) {
 			logger.error("", e);
-			System.out.printf("something go wrong, reason: %s\n", e.getMessage());
+			System.out.printf("time:%s, thread :%s, something go wrong, reason: %s\n", new Date().toString(), Thread.currentThread().getName(), e.getMessage());
 		}
 	}
 
@@ -186,8 +193,8 @@ public class SftpDownload {
 				} else if (!localDir.isDirectory()) {
 					String errMessage = "file " + localDir + "isn't a directory";
 					logger.error(errMessage);
-					System.out.println(errMessage);
-					return;
+					System.out.printf("time:%s, thread :%s, "+errMessage+"\n", new Date().toString(), Thread.currentThread().getName());
+					continue;
 				}
 				SftpATTRS LogAttr = rFile.getFiles().remove(uLogName);
 				rFile.getFiles().remove(dLogName);
@@ -196,11 +203,13 @@ public class SftpDownload {
 				DownloadTask downloadTask = null;
 				if (fileSize > 0) {
 					downloadTask = new DownloadTask(fileSize, dirName);
-					dirRecords.put(dirName, new DirRecord(dirName));
+					DirRecord dirRecord = new DirRecord(dirName);
+					dirRecords.put(dirName, dirRecord);
 
 					for (String name : rFile.getFiles().keySet()) {
 
-						if (rFile.getFiles().get(name).getMTime() >= LogAttr.getMTime()) {
+						if (rFile.getFiles().get(name).getMTime() > LogAttr.getMTime()) {
+							dirRecord.transSkip(name);
 							continue;
 						}
 						File localFile = new File(localDir, name);
@@ -209,7 +218,7 @@ public class SftpDownload {
 								logger.error("file " + localFile.getAbsolutePath() + "isn't a regular file");
 								continue;
 							}
-							if (localFile.lastModified() / 1000 < rFile.getAttr().getMTime()) {
+							if (localFile.lastModified() / 1000 < rFile.getFiles().get(name).getMTime()) {
 								localFile.delete();
 							}
 						}
@@ -218,6 +227,7 @@ public class SftpDownload {
 						}
 						try {
 							semaphore.acquire();
+							downloadTask.addTimes(name, rFile.getFiles().get(name).getMTime(), LogAttr.getMTime());
 							downloadTask.addFile(name);
 							fixedThreadPool.submit(downloadTask);
 
@@ -248,7 +258,16 @@ public class SftpDownload {
 		private String dirName;
 		private List<String> files = new LinkedList<>();
 		private Set<String> delFiles = new HashSet<>();
-
+		private Map<String, String> times = new HashMap<>();
+		
+		protected synchronized void addTimes(String name, long file, long log) {
+			times.put(name, file+","+log);
+		}
+		
+		private synchronized String getTimes(String name) {
+			return times.remove(name);
+		}
+		
 		public synchronized void addFile(String name) {
 			dirRecords.get(dirName).add();
 			files.add(name);
@@ -277,7 +296,7 @@ public class SftpDownload {
 		private void doSftp(ChannelSftp sftp, SftpProgressMonitorImpl listen, DirRecord dirRecord, String name)
 				throws SftpException {
 			sftp.get(PREFIX + dirName + "/" + name, LOCAL + dirName + "/" + name, listen, ChannelSftp.RESUME);
-			dirRecord.transRecord(listen.getTotal(), listen.getSkip(), listen.getSum(), name);
+			dirRecord.transRecord(listen.getTotal(), listen.getSkip(), listen.getSum(), name, getTimes(name));
 			if (isDeleted(name)) {
 				sftp.rm(SftpDownload.PREFIX + dirName + "/" + name);
 				dirRecord.delRecord(name);
@@ -333,7 +352,7 @@ public class SftpDownload {
 		try {
 			SftpATTRS attr = sftp.stat(PREFIX + dirName);
 			if (!attr.isDir()) {
-				System.out.println("remote dir isn't a directory");
+				System.out.printf("time:%s, thread :%s, remote dir isn't a directory\n", new Date().toString(), Thread.currentThread().getName());
 			} else {
 				RemoteFile rFile = new RemoteFile(dirName, attr);
 				Vector<ChannelSftp.LsEntry> ls = sftp.ls(PREFIX + dirName);
@@ -346,7 +365,7 @@ public class SftpDownload {
 			}
 		} catch (SftpException e) {
 			logger.error("", e);
-			System.out.println(e.getMessage());
+			System.out.printf("time:%s, thread :%s, "+e.getMessage(), new Date().toString(), Thread.currentThread().getName());
 		}
 		if (sftp != null) {
 			syncChannel(sftp);
@@ -356,7 +375,7 @@ public class SftpDownload {
 	private static boolean checkTime(String name) {
 		Matcher matcher = pattern.matcher(name);
 		if (matcher.matches()) {
-			if (matcher.replaceAll("$1").compareTo(deadline) == -1) {
+			if (matcher.replaceAll("$1").compareTo(deadline) < 0) {
 				return true;
 			}
 		}

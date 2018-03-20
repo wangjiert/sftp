@@ -33,11 +33,11 @@ public class SftpUtil {
 			result = InetAddress.getByName(host).isReachable(timeOut);
 		} catch (UnknownHostException e) {
 			logger.error("", e);
-			System.out.println("Unable to resolve domain name");
+			System.out.printf("time:%s, thread :%s, Unable to resolve domain name\n", new Date().toString(), Thread.currentThread().getName());
 			result = false;
 		} catch (IOException e) {
 			logger.error("", e);
-			System.out.println("Network connection is abnormal");
+			System.out.printf("time:%s, thread :%s, Network connection is abnormal\n", new Date().toString(), Thread.currentThread().getName());
 			result = false;
 		}
 		return result;
@@ -51,7 +51,7 @@ public class SftpUtil {
 			result = true;
 		} catch (IOException e) {
 			logger.error("", e);
-			System.out.println("please check the server,ensure sftp service is normal");
+			System.out.printf("time:%s, thread :%s, please check the server,ensure sftp service is normal\n", new Date().toString(), Thread.currentThread().getName());
 		} finally {
 			try {
 				socket.close();
@@ -183,7 +183,7 @@ public class SftpUtil {
 			channel.connect();
 		} catch (JSchException e) {
 			logger.error("", e);
-			System.out.println("can't connect to sftp server, username and password is wrong or network is busy");
+			System.out.printf("time:%s, thread :%s, can't connect to sftp server, username and password is wrong or network is busy\n", new Date().toString(), Thread.currentThread().getName());
 		}
 
 		return (ChannelSftp) channel;

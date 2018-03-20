@@ -73,7 +73,7 @@ public class DirRecord {
 		try {
 			sftp.put(SftpDownload.LOCAL + dirName + "/download.log", SftpDownload.PREFIX + dirName + "/download.log",
 					listen, ChannelSftp.APPEND);
-			transRecord(listen.getTotal(), listen.getSkip(), listen.getSum(), "download.log");
+			transRecord(listen.getTotal(), listen.getSkip(), listen.getSum(), "download.log", "");
 			new File(SftpDownload.LOCAL + dirName + "/download.log").deleteOnExit();
 		} catch (SftpException e) {
 			logger.error("", e);
@@ -104,19 +104,29 @@ public class DirRecord {
 		}
 		return;
 	}
+	
+	protected void transSkip(String name) {
+		System.out.printf("time:%s, thread :%s, judge by time, file %s is skipped", new Date().toString(), Thread.currentThread().getName(), SftpDownload.PREFIX+dirName+"/"+name);
+		if (fos != null) {
+			fos.append("judge by time, file "+SftpDownload.PREFIX+dirName+name+" is skipped");
+		}
+	}
 
-	protected void transRecord(long total, long skip, long sum, String name) {
+	protected void transRecord(long total, long skip, long sum, String name, String time) {
 		String message = "";
-
+		if (time.equals("")) {
+			time="0,0";
+		}
+		String[] times = time.split(",");
 		if (sum == 0) {
 			name = SftpDownload.PREFIX + dirName + "/" + name;
-			System.out.println("skip file " + name);
+			System.out.printf("time:%s, thread :%s, skip file " + name+" "+times[0]+" "+times[1] + "\n", new Date().toString(), Thread.currentThread().getName());
 			return;
 		} else {
-			message = name + "\t" + format.format(new Date()) + "\t" + total + "\t" + skip + "\t" + sum + "\n";
+			message = name + "\t" + format.format(new Date()) + "\t" + total + "\t" + skip + "\t" + sum + " " + times[0] +" "+times[1]+"\n";
 			name = SftpDownload.PREFIX + dirName + "/" + name;
-			System.out.printf("file name: %s, file length: %d, skip length: %d, read length: %d\n", name, total, skip,
-					sum);
+			System.out.printf("time:%s, thread :%s, file name: %s, file length: %d, skip length: %d, read length: %d, filetime:%s, logtime:%s\n",new Date().toString(), Thread.currentThread().getName(), name, total, skip,
+					sum, times[0], times[1]);
 
 		}
 		if (fos != null) {
@@ -126,7 +136,7 @@ public class DirRecord {
 
 	protected void delRecord(String name) {
 		String message = "delete remote file: " + SftpDownload.PREFIX + dirName + "/" + name + "\n";
-		System.out.printf(message);
+		System.out.printf("time:%s, thread :%s, "+message,new Date().toString(), Thread.currentThread().getName());
 		if (fos != null) {
 			fos.append(message);
 		}
