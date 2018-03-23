@@ -15,7 +15,7 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.SftpException;
 
 public class DirRecord {
-	private Logger logger = LogManager.getLogger(DirRecord.class);
+	private Logger logger;
 	private static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	private String dirName;
 	private AtomicInteger count = new AtomicInteger();
@@ -23,6 +23,7 @@ public class DirRecord {
 	private boolean readDone;
 
 	protected DirRecord(String dirName) {
+		logger = LogManager.getLogger(DirRecord.class);
 		SftpDownload.wg.incrementAndGet();
 		this.dirName = dirName;
 		getPrint();

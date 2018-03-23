@@ -108,6 +108,7 @@ public class SftpDownload {
 			System.setProperty("SFTP_HOME", pwd.getAbsolutePath());
 		}
 		logger = LogManager.getLogger(SftpDownload.class);
+		SftpUtil.init();
 		initDate();
 
 		File localDir = new File(fileServerInfo.getLocalPath());

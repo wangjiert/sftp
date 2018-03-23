@@ -44,22 +44,24 @@ public class SftpUpload {
 		fileServerInfo = new FileServerInfo(ip, port, username, password, localPath, remoteDir, maxThread, 1);
 		File f = new File("");
 		System.setProperty("SFTP_HOME", f.getAbsolutePath()+"/");
+		SftpUtil.init();
 		upload(null);
 	}
 
-	public static void upload(String[] args) {
-		logger = LogManager.getLogger(SftpUpload.class);
+	protected static void upload(String[] args) {
 		HOME_PATH = System.getProperty("SFTP_HOME");
 		if (HOME_PATH == null || HOME_PATH.equals("")) {
 			System.out.println("please set system property SFTP_HOME");
 			return;
 		}
-
+		logger = LogManager.getLogger(SftpUpload.class);
 		if (args != null) {
 			initFileServerInfo(args);
 			if (fileServerInfo == null) {
 				return;
 			}
+			File localDir = new File(fileServerInfo.getLocalPath());
+			fileServerInfo.setFilePath(fileServerInfo.getFilePath()+"/"+localDir.getName());
 		}
 
 		File localDir = new File(fileServerInfo.getLocalPath());
@@ -67,11 +69,11 @@ public class SftpUpload {
 			System.out.printf("local dir: %s doesn't exist", localDir.getAbsolutePath());
 			return;
 		}
-		fileServerInfo.setFilePath(fileServerInfo.getFilePath() + "/" + localDir.getName());
-		if (fileServerInfo.getFilePath() == null || fileServerInfo.getFilePath().equals("")) {
-			System.out.println("remote filepath can't be null");
-			return;
-		}
+//		fileServerInfo.setFilePath(fileServerInfo.getFilePath() + "/" + localDir.getName());
+//		if (fileServerInfo.getFilePath() == null || fileServerInfo.getFilePath().equals("")) {
+//			System.out.println("remote filepath can't be null");
+//			return;
+//		}
 		
 		boolean reachable = checkConnect();
 		if (!reachable) {

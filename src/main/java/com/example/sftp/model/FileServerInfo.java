@@ -36,8 +36,8 @@ public class FileServerInfo {
 		this.port = Integer.parseInt(prop.getProperty("remote.port", "22"));
 		this.account = prop.getProperty("remote.username");
 		this.password = prop.getProperty("remote.passwd");
-		this.filePath = prop.getProperty("remote.dir").replaceAll("\\\\", "/");
 		this.localPath = prop.getProperty("local.dir");
+		this.filePath = prop.getProperty("remote.dir").replaceAll("\\\\", "/");
 		this.max = Integer.parseInt(prop.getProperty("max.thread", "10"));
 		this.privateKey = prop.getProperty("key.path");
 		this.passphrase = prop.getProperty("key.pwd");

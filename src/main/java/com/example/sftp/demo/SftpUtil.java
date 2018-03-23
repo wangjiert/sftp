@@ -24,9 +24,13 @@ import com.jcraft.jsch.SftpException;
 import com.jcraft.jsch.SftpProgressMonitor;
 
 public class SftpUtil {
-	private static Logger logger = LogManager.getLogger(SftpUtil.class);
+	private static Logger logger;
 	private static final int SERVERALIVEINTERVAL = 60000;
 
+	protected static void init() {
+		logger = LogManager.getLogger(SftpUtil.class);
+	}
+	
 	public static boolean isHostReach(String host, Integer timeOut) {
 		boolean result = true;
 		try {
@@ -329,7 +333,7 @@ public class SftpUtil {
 }
 
 class FileRecord {
-	private static Logger logger = LogManager.getLogger("com.example.sftp.demo.FileRecord");
+	private static Logger logger;
 	private static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	private String name;
 	private long size;
@@ -338,6 +342,7 @@ class FileRecord {
 	private Date date;
 
 	public FileRecord(String name, Date date, Long size, long skip, long upload) {
+		logger = LogManager.getLogger("com.example.sftp.demo.FileRecord");
 		this.name = name;
 		this.date = date;
 		this.size = size;
