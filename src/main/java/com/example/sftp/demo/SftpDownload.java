@@ -1,9 +1,11 @@
 package com.example.sftp.demo;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -69,7 +71,13 @@ public class SftpDownload {
 			return;
 		}
 		HOME_PATH = System.getProperty("SFTP_HOME");
-		initFileServerInfo(args);
+		logger = LogManager.getLogger(SftpDownload.class);
+		File conf = new File(HOME_PATH+"../conf/my.conf");
+		if (conf.exists()) {
+			parseConfig(conf.getAbsolutePath());
+		} else {
+			initFileServerInfo(args);
+		}
 		if (fileServerInfo == null) {
 			return;
 		}
@@ -81,7 +89,48 @@ public class SftpDownload {
 		System.out.println("=============================================================================");
 	}
 
+	private static void parseConfig(String filename) {
+		Pattern pattern = Pattern.compile("^\\[.*\\]$");
+        try (
+        		BufferedReader f = new BufferedReader(new InputStreamReader(new FileInputStream(filename)));
+        		){
+			while(true) {
+				String line = f.readLine().trim();
+				if (line == null) {
+					return;
+				} else if (line.trim().equals("[mydump]")) {
+					break;
+				} 
+			}
+			Properties properties = new Properties();
+			while (true) {
+				String line = f.readLine().trim();
+				if (line == null) {
+					break;
+				} else if (line.startsWith("#")) {
+					continue;
+				} else if (line.equals("")) {
+					continue;
+				} else if (pattern.matcher(line).matches()){
+					break;
+				} else {
+					String[] lines = line.split("=");
+					if (lines.length != 2) {
+						continue;
+					}
+					properties.setProperty(lines[0], lines[1]);
+				}
+			}
+			fileServerInfo = new FileServerInfo(properties);
+		} catch (FileNotFoundException e) {
+			logger.error("", e);
+		} catch (IOException e) {
+			logger.error("", e);
+		}
+	}
+	
 	private static void initFileServerInfo(String args[]) {
+		
 		Properties prop = new Properties();
 		try (FileInputStream fis = new FileInputStream(HOME_PATH + CONF_PATH);) {
 			prop.load(fis);
@@ -107,7 +156,9 @@ public class SftpDownload {
 			File pwd = new File("");
 			System.setProperty("SFTP_HOME", pwd.getAbsolutePath());
 		}
-		logger = LogManager.getLogger(SftpDownload.class);
+		if (logger == null) {
+			logger = LogManager.getLogger(SftpDownload.class);
+		}
 		SftpUtil.init();
 		initDate();
 
