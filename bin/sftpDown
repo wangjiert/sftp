@@ -48,4 +48,3 @@ if [ ! -f ${SFTP_HOME}../conf/my.conf ]; then
 	fi
 fi
 java -DSFTP_HOME=${SFTP_HOME} -jar ${SFTP_HOME}target/sftp.jar $1 "d" >> $(date "+%Y%m%d").log
-curl -XGET 'localhost:9009/gaxz/execlocaldata'
