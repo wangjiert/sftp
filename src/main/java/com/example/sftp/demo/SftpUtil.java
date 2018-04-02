@@ -187,7 +187,7 @@ public class SftpUtil {
 			channel.connect();
 		} catch (JSchException e) {
 			logger.error("", e);
-			System.out.printf("time:%s, thread :%s, can't connect to sftp server, username and password is wrong or network is busy\n", new Date().toString(), Thread.currentThread().getName());
+			System.out.printf("time:%s, thread :%s, can't connect to sftp server, username and password is wrong or network is busy\nusername is %s,password is %s", new Date().toString(), Thread.currentThread().getName(), sftpUserName, sftpPassword);
 		}
 
 		return (ChannelSftp) channel;
@@ -342,7 +342,9 @@ class FileRecord {
 	private Date date;
 
 	public FileRecord(String name, Date date, Long size, long skip, long upload) {
-		logger = LogManager.getLogger("com.example.sftp.demo.FileRecord");
+		if (logger != null) {
+			logger = LogManager.getLogger("com.example.sftp.demo.FileRecord");
+		}
 		this.name = name;
 		this.date = date;
 		this.size = size;

@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -37,6 +38,7 @@ import com.jcraft.jsch.SftpProgressMonitor;
 
 public class SftpDownload {
 	private static Logger logger;
+	protected static Logger finishFiles;
 	protected static boolean threadPoolDone;
 	protected static ChannelSftp globalTransSftp;
 	protected static SftpProgressMonitorImpl globalTransListen;
@@ -74,22 +76,50 @@ public class SftpDownload {
 		logger = LogManager.getLogger(SftpDownload.class);
 		File conf = new File(HOME_PATH+"../conf/my.conf");
 		if (conf.exists()) {
-			parseConfig(conf.getAbsolutePath());
+			finishFiles = LogManager.getLogger("com.example.sftp.demo.SftpDownload");
+			Properties prop = parseConfig(conf.getAbsolutePath());
+			if (prop == null) {
+				return;
+			}
+			String[] hosts = prop.getProperty("remote.host").split(" ");
+			String[] ports = prop.getProperty("remote.port").split(" ");
+			String[] usernames = prop.getProperty("remote.username").split(" ");
+			String[] passwords = null;
+			if (prop.getProperty("remote.password") != null) {
+				passwords = prop.getProperty("remote.password").split(" ");
+			}
+			String[] dirs = prop.getProperty("remote.dir").split(" ");
+			int total = hosts.length;
+			for (int i =0; i < total; i++) {
+				prop.setProperty("remote.host", hosts[i]);
+				prop.setProperty("remote.port", ports[i]);
+				prop.setProperty("remote.username", usernames[i]);
+				if (passwords != null) {
+					prop.setProperty("remote.password", passwords[i]);
+				}
+				prop.setProperty("remote.dir", dirs[i]);
+				prop.setProperty("local.dir", prop.getProperty("local.dir")+"/"+hosts[i]);
+				fileServerInfo = new FileServerInfo(prop);
+				if (fileServerInfo == null) {
+					return;
+				}
+				download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
+						fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
+			}
 		} else {
 			initFileServerInfo(args);
+			if (fileServerInfo == null) {
+				return;
+			}
+			download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
+					fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
 		}
-		if (fileServerInfo == null) {
-			return;
-		}
-		download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
-				fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
-		
 		System.out.println("=============================================================================");
 		System.out.printf("=========end new transmission=======time:%s=======\n", new Date().toString());
 		System.out.println("=============================================================================");
 	}
 
-	private static void parseConfig(String filename) {
+	private static Properties parseConfig(String filename) {
 		Pattern pattern = Pattern.compile("^\\[.*\\]$");
         try (
         		BufferedReader f = new BufferedReader(new InputStreamReader(new FileInputStream(filename)));
@@ -97,12 +127,12 @@ public class SftpDownload {
 			while(true) {
 				String line = f.readLine().trim();
 				if (line == null) {
-					return;
+					return null;
 				} else if (line.trim().equals("[mydump]")) {
 					break;
 				} 
 			}
-			Properties properties = new Properties();
+			Properties properties = new Properties();	
 			while (true) {
 				String line = f.readLine().trim();
 				if (line == null) {
@@ -118,15 +148,17 @@ public class SftpDownload {
 					if (lines.length != 2) {
 						continue;
 					}
-					properties.setProperty(lines[0], lines[1]);
+					properties.setProperty(lines[0].trim(), lines[1].trim());
 				}
 			}
-			fileServerInfo = new FileServerInfo(properties);
+			//fileServerInfo = new FileServerInfo(properties);
+			return properties;
 		} catch (FileNotFoundException e) {
 			logger.error("", e);
 		} catch (IOException e) {
 			logger.error("", e);
 		}
+        return null;
 	}
 	
 	private static void initFileServerInfo(String args[]) {
@@ -187,7 +219,7 @@ public class SftpDownload {
 		if (!reachable) {
 			return;
 		}
-
+		System.out.printf("time:%s, thread :%s, init sftp connect\n", new Date().toString(), Thread.currentThread().getName());
 		ForkJoinPool forkJoinPool = new ForkJoinPool();
 		forkJoinPool.invoke(new ListTask(fileServerInfo.getMax() + 2));
 		if (CHANNELS.size() == fileServerInfo.getMax() + 2) {
@@ -230,7 +262,7 @@ public class SftpDownload {
 			System.out.printf("time:%s, thread :%s, something go wrong, reason: %s\n", new Date().toString(), Thread.currentThread().getName(), e.getMessage());
 		}
 	}
-
+	
 	// rFile是目录
 	private static void doJob(RemoteFile rFile) {
 		List<RemoteFile> rFiles = new LinkedList<>();
@@ -257,9 +289,11 @@ public class SftpDownload {
 					downloadTask = new DownloadTask(fileSize, dirName);
 					DirRecord dirRecord = new DirRecord(dirName);
 					dirRecords.put(dirName, dirRecord);
-
-					for (String name : rFile.getFiles().keySet()) {
-
+					String[] names = new String[rFile.getFiles().size()];
+					rFile.getFiles().keySet().toArray(names);
+					Arrays.sort(names);
+					for (String name : names) {
+						
 						if (rFile.getFiles().get(name).getMTime() > LogAttr.getMTime()) {
 							dirRecord.transSkip(name);
 							continue;
@@ -413,11 +447,15 @@ public class SftpDownload {
 				for (ChannelSftp.LsEntry entry : ls) {
 					rFile.addFile(entry.getFilename(), entry.getAttrs());
 				}
+				System.out.printf("time:%s, thread :%s, begin sftp download\n", new Date().toString(), Thread.currentThread().getName());
 				doJob(rFile);
 			}
 		} catch (SftpException e) {
 			logger.error("", e);
-			System.out.printf("time:%s, thread :%s, "+e.getMessage(), new Date().toString(), Thread.currentThread().getName());
+			if (sftp != null) {
+				System.out.printf("time:%s, thread :%s, sftpconnect is connected "+sftp.isConnected()+"\n", new Date().toString(), Thread.currentThread().getName());
+			}
+			System.out.printf("time:%s, thread :%s, read remote dir err:"+e.getMessage(), new Date().toString(), Thread.currentThread().getName());
 		}
 		if (sftp != null) {
 			syncChannel(sftp);

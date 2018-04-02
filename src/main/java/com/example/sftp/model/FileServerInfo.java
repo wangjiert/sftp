@@ -27,7 +27,7 @@ public class FileServerInfo {
         this.localPath = localPath;
         this.filePath = remoteDir;
         this.max = max;
-        this.timeout = 60000;
+        this.timeout = 600000;
         this.day = day;
     }
 	
@@ -35,13 +35,13 @@ public class FileServerInfo {
 		this.host = prop.getProperty("remote.host");
 		this.port = Integer.parseInt(prop.getProperty("remote.port", "22"));
 		this.account = prop.getProperty("remote.username");
-		this.password = prop.getProperty("remote.passwd");
+		this.password = prop.getProperty("remote.password");
 		this.localPath = prop.getProperty("local.dir");
 		this.filePath = prop.getProperty("remote.dir").replaceAll("\\\\", "/");
 		this.max = Integer.parseInt(prop.getProperty("max.thread", "10"));
 		this.privateKey = prop.getProperty("key.path");
 		this.passphrase = prop.getProperty("key.pwd");
-		this.timeout = Integer.parseInt(prop.getProperty("remote.timeout", "60000"));
+		this.timeout = Integer.parseInt(prop.getProperty("remote.timeout", "600000"));
 		this.day = Integer.parseInt(prop.getProperty("day", "1"));
 	}
 

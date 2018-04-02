@@ -13,6 +13,9 @@
         <File name="file" fileName="${sys:SFTP_HOME}/finish.log">
         	<PatternLayout pattern="%m%n"/>
         </File>
+        <File name="record" fileName="${sys:SFTP_HOME}../finish.log">
+        	<PatternLayout pattern="%m%n"/>
+        </File>
     </Appenders>
     <Loggers> 
         <Root level="info">
@@ -20,6 +23,9 @@
         </Root>
         <Logger level="info" name="com.example.sftp.demo.FileRecord" additivity="false">
             <AppenderRef ref="file"/>
+        </Logger>
+        <Logger level="info" name="com.example.sftp.demo.SftpDownload" additivity="false">
+            <AppenderRef ref="record"/>
         </Logger>
     </Loggers>
 </Configuration>

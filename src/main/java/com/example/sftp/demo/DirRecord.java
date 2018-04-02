@@ -42,9 +42,9 @@ public class DirRecord {
 			if (fos != null) {
 				fos.flush();
 				fos.close();
-				fos = null;
 			}
 			if (fos != null) {
+				fos = null;
 				if (sftp == null || listen == null) {
 					sftp = SftpDownload.globalTransSftp;
 					listen = SftpDownload.globalTransListen;
@@ -72,6 +72,7 @@ public class DirRecord {
 	private void finishJob(ChannelSftp sftp, SftpProgressMonitorImpl listen) {
 		listen.reset();
 		try {
+			
 			sftp.put(SftpDownload.LOCAL + dirName + "/download.log", SftpDownload.PREFIX + dirName + "/download.log",
 					listen, ChannelSftp.APPEND);
 			transRecord(listen.getTotal(), listen.getSkip(), listen.getSum(), "download.log", "");
@@ -124,11 +125,15 @@ public class DirRecord {
 			System.out.printf("time:%s, thread :%s, skip file " + name+" "+times[0]+" "+times[1] + "\n", new Date().toString(), Thread.currentThread().getName());
 			return;
 		} else {
+			if (SftpDownload.finishFiles != null) {
+				if (!name.equals("download.log")) {
+					SftpDownload.finishFiles.info(SftpDownload.LOCAL+dirName+"/"+name);
+				}
+			}
 			message = name + "\t" + format.format(new Date()) + "\t" + total + "\t" + skip + "\t" + sum + " " + times[0] +" "+times[1]+"\n";
 			name = SftpDownload.PREFIX + dirName + "/" + name;
 			System.out.printf("time:%s, thread :%s, file name: %s, file length: %d, skip length: %d, read length: %d, filetime:%s, logtime:%s\n",new Date().toString(), Thread.currentThread().getName(), name, total, skip,
 					sum, times[0], times[1]);
-
 		}
 		if (fos != null) {
 			fos.append(message);
