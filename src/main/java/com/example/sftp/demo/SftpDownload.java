@@ -99,7 +99,7 @@ public class SftpDownload {
 					prop.setProperty("remote.password", passwords[i]);
 				}
 				prop.setProperty("remote.dir", dirs[i]);
-				prop.setProperty("local.dir", prop.getProperty("local.dir") + "/" + hosts[i]);
+				prop.setProperty("local.dir", prop.getProperty("local.dir"));
 				fileServerInfo = new FileServerInfo(prop);
 				if (fileServerInfo == null) {
 					return;
@@ -285,11 +285,12 @@ public class SftpDownload {
 				it.remove();
 			}
 		}
-		if (attr != null) {
-			files.put(uLogName, attr);
+		return true;
+		/*if (attr != null) {
+			//files.put(uLogName, attr);
 			return true;
 		}
-		return false;
+		return false;*/
 	}
 
 	// rFile是目录
@@ -310,7 +311,9 @@ public class SftpDownload {
 							Thread.currentThread().getName());
 					continue;
 				}
-				SftpATTRS LogAttr = rFile.getFiles().remove(uLogName);
+				//SftpATTRS LogAttr = rFile.getFiles().remove(uLogName);
+                Date now = new Date();
+				long validTime = now.getTime()/1000 - 60;
 				rFile.getFiles().remove(dLogName);
 
 				int fileSize = rFile.getFiles().size();
@@ -324,7 +327,8 @@ public class SftpDownload {
 					Arrays.sort(names);
 					for (String name : names) {
 
-						if (rFile.getFiles().get(name).getMTime() > LogAttr.getMTime()) {
+						//if (rFile.getFiles().get(name).getMTime() > LogAttr.getMTime()) {
+                        if (rFile.getFiles().get(name).getMTime() > validTime ) {
 							dirRecord.transSkip(name);
 							continue;
 						}
@@ -343,7 +347,8 @@ public class SftpDownload {
 						}
 						try {
 							semaphore.acquire();
-							downloadTask.addTimes(name, rFile.getFiles().get(name).getMTime(), LogAttr.getMTime());
+							//downloadTask.addTimes(name, rFile.getFiles().get(name).getMTime(), LogAttr.getMTime());
+                            downloadTask.addTimes(name, rFile.getFiles().get(name).getMTime(), validTime);
 							downloadTask.addFile(name);
 							fixedThreadPool.submit(downloadTask);
 
@@ -582,6 +587,7 @@ public class SftpDownload {
 			SftpUtil.disconnected(globalStatSftp);
 		}
 		CHANNELS.clear();
+		LISTENERS.clear();
 	}
 }
 

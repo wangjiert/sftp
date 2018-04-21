@@ -49,9 +49,9 @@ public class DirRecord {
 					sftp = SftpDownload.globalTransSftp;
 					listen = SftpDownload.globalTransListen;
 				}
-				synchronized (sftp) {
-					finishJob(sftp, listen);
-				}
+				//synchronized (sftp) {
+				//	finishJob(sftp, listen);
+				//}
 			}
 			SftpDownload.dirRecords.remove(dirName);
 
@@ -108,7 +108,7 @@ public class DirRecord {
 	}
 	
 	protected void transSkip(String name) {
-		System.out.printf("time:%s, thread :%s, judge by time, file %s is skipped", new Date().toString(), Thread.currentThread().getName(), SftpDownload.PREFIX+dirName+"/"+name);
+		//System.out.printf("time:%s, thread :%s, judge by time, file %s is skipped", new Date().toString(), Thread.currentThread().getName(), SftpDownload.PREFIX+dirName+"/"+name);
 		if (fos != null) {
 			fos.append("judge by time, file "+SftpDownload.PREFIX+dirName+name+" is skipped");
 		}
@@ -121,13 +121,13 @@ public class DirRecord {
 		}
 		String[] times = time.split(",");
 		if (sum == 0) {
-			name = SftpDownload.PREFIX + dirName + "/" + name;
-			System.out.printf("time:%s, thread :%s, skip file " + name+" "+times[0]+" "+times[1] + "\n", new Date().toString(), Thread.currentThread().getName());
-			return;
+			//name = SftpDownload.PREFIX + dirName + "/" + name;
+			//System.out.printf("time:%s, thread :%s, skip file " + name+" "+times[0]+" "+times[1] + "\n", new Date().toString(), Thread.currentThread().getName());
+			//return;
 		} else {
 			if (SftpDownload.finishFiles != null) {
 				if (!name.equals("download.log")) {
-					SftpDownload.finishFiles.info(SftpDownload.LOCAL+dirName+"/"+name);
+				    SftpDownload.finishFiles.info(SftpDownload.LOCAL+dirName+"/"+name);
 				}
 			}
 			message = name + "\t" + format.format(new Date()) + "\t" + total + "\t" + skip + "\t" + sum + " " + times[0] +" "+times[1]+"\n";
