@@ -77,7 +77,7 @@ public class SftpDownload {
 		logger = LogManager.getLogger(SftpDownload.class);
 		File conf = new File(HOME_PATH + "../conf/my.conf");
 		if (conf.exists()) {
-			finishFiles = LogManager.getLogger("com.example.sftp.demo.SftpDownload");
+			finishFiles = LogManager.getLogger("SftpDownload");
 			Properties prop = parseConfig(conf.getAbsolutePath());
 			if (prop == null) {
 				return;
