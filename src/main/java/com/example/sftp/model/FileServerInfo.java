@@ -64,7 +64,7 @@ public class FileServerInfo {
 		this.passphrase = prop.getProperty("key.pwd");
 		this.timeout = Integer.parseInt(prop.getProperty("remote.timeout", "604800000"));
 		this.day = Integer.parseInt(prop.getProperty("day", "1"));
-		this.today = Boolean.valueOf(prop.getProperty("today", "true"));
+		this.today = Boolean.valueOf(prop.getProperty("today", "false"));
 		this.notoday = Boolean.valueOf(prop.getProperty("notoday", "false"));
 		String[] iprange = prop.getProperty("iprange", "").split("-");
         if (iprange.length == 2) {

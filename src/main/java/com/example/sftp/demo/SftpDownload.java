@@ -333,7 +333,7 @@ public class SftpDownload {
         while (rFiles.size() > 0) {
             rFile = rFiles.remove(0);
             String dirName = rFile.getName();
-            if (rFile.getFiles().size() > 0) {
+            if (rFile.getFiles().size() > 0 && rFile.getDirs().size()==2) {
                 String ipStr = dirName.substring(dirName.lastIndexOf("/") + 1);
                 if (compareIp(ipStr, fileServerInfo.getStartIp()) < 0 || compareIp(ipStr, fileServerInfo.getEndIp()) > 0) {
                     System.out.printf("skip dir:%s, reason: ip:%s is out of range %s %s\n", dirName, ipStr, fileServerInfo.getStartIp(), fileServerInfo.getEndIp());
