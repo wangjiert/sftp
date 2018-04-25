@@ -18,7 +18,28 @@ public class FileServerInfo {
 	private String privateKey;
 	private String passphrase;
 	private int day;
-	
+
+    public boolean isToday() {
+        return today;
+    }
+
+    public boolean isNotoday() {
+        return notoday;
+    }
+
+    public String getStartIp() {
+        return startIp;
+    }
+
+    public String getEndIp() {
+        return endIp;
+    }
+
+    private boolean today;
+	private boolean notoday;
+	private String startIp;
+	private String endIp;
+
 	public FileServerInfo(String host, int port, String username, String password, String localPath, String remoteDir, int max, int day) {
         this.host = host;
         this.port = port;
@@ -43,6 +64,13 @@ public class FileServerInfo {
 		this.passphrase = prop.getProperty("key.pwd");
 		this.timeout = Integer.parseInt(prop.getProperty("remote.timeout", "604800000"));
 		this.day = Integer.parseInt(prop.getProperty("day", "1"));
+		this.today = Boolean.valueOf(prop.getProperty("today", "true"));
+		this.notoday = Boolean.valueOf(prop.getProperty("notoday", "false"));
+		String[] iprange = prop.getProperty("iprange", "").split("-");
+        if (iprange.length == 2) {
+            this.startIp = iprange[0];
+            this.endIp = iprange[1];
+        }
 	}
 
 	public int getDay() {

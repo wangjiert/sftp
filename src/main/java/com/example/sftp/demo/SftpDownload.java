@@ -62,6 +62,7 @@ public class SftpDownload {
 	private static ExecutorService fixedThreadPool;
 	protected static AtomicInteger wg = new AtomicInteger();
 	protected static Map<String, DirRecord> dirRecords = new HashMap<>();
+	private static String todayStr;
 
 	public static void main(String[] args) {
 		// download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads",
@@ -90,6 +91,11 @@ public class SftpDownload {
 				passwords = prop.getProperty("remote.password").split(" ");
 			}
 			String[] dirs = prop.getProperty("remote.dir").split(" ");
+			if (prop.getProperty("today").equals("true") && prop.getProperty("notoday").equals("true")) {
+				System.out.printf("time:%s, thread :%s, today and notoday can't be true the same time\n",
+						new Date().toString(), Thread.currentThread().getName());
+				return;
+			}
 			int total = hosts.length;
 			for (int i = 0; i < total; i++) {
 				prop.setProperty("remote.host", hosts[i]);
@@ -102,6 +108,11 @@ public class SftpDownload {
 				prop.setProperty("local.dir", prop.getProperty("local.dir"));
 				fileServerInfo = new FileServerInfo(prop);
 				if (fileServerInfo == null) {
+					return;
+				}
+				if (fileServerInfo.getStartIp().equals("") || fileServerInfo.getEndIp().equals("")) {
+					System.out.printf("time:%s, thread :%s, iprange format is wrong\n",
+							new Date().toString(), Thread.currentThread().getName());
 					return;
 				}
 				download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
@@ -300,6 +311,12 @@ public class SftpDownload {
 		while (rFiles.size() > 0) {
 			rFile = rFiles.remove(0);
 			String dirName = rFile.getName();
+            if (rFile.getFiles().size() > 0) {
+                String ipStr = dirName.substring(dirName.lastIndexOf("/")+1);
+                if (ipStr.compareTo(fileServerInfo.getStartIp())<0 || ipStr.compareTo(fileServerInfo.getEndIp())>0) {
+                    continue;
+                }
+            }
 			if (checkValid(rFile.getFiles())) {
 				File localDir = new File(LOCAL + dirName);
 				if (!localDir.exists()) {
@@ -326,12 +343,19 @@ public class SftpDownload {
 					rFile.getFiles().keySet().toArray(names);
 					Arrays.sort(names);
 					for (String name : names) {
-
 						//if (rFile.getFiles().get(name).getMTime() > LogAttr.getMTime()) {
                         if (rFile.getFiles().get(name).getMTime() > validTime ) {
 							dirRecord.transSkip(name);
 							continue;
 						}
+						if (fileServerInfo.isToday() && !name.contains(todayStr)) {
+                            dirRecord.transSkipByConfig(name);
+                            continue;
+                        }
+                        if (fileServerInfo.isNotoday() && name.contains(todayStr)) {
+                            dirRecord.transSkipByConfig(name);
+                            continue;
+                        }
 						File localFile = new File(localDir, name);
 						if (localFile.exists()) {
 							if (!localFile.isFile()) {
@@ -458,6 +482,7 @@ public class SftpDownload {
 		Calendar calendar = Calendar.getInstance();
 		calendar.add(Calendar.DATE, -fileServerInfo.getDay());
 		deadline = format.format(calendar.getTime());
+		todayStr = format.format(new Date());
 	}
 
 	private static boolean checkConnect() {

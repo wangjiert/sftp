@@ -114,6 +114,13 @@ public class DirRecord {
 		}
 	}
 
+	protected void transSkipByConfig(String name) {
+		//System.out.printf("time:%s, thread :%s, judge by time, file %s is skipped", new Date().toString(), Thread.currentThread().getName(), SftpDownload.PREFIX+dirName+"/"+name);
+		if (fos != null) {
+			fos.append("judge by config, file "+SftpDownload.PREFIX+dirName+name+" is skipped");
+		}
+	}
+
 	protected void transRecord(long total, long skip, long sum, String name, String time) {
 		String message = "";
 		if (time.equals("")) {
