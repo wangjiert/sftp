@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -52,13 +53,14 @@ public class SftpDownload {
     public static String PREFIX = "";
     protected static String LOCAL = "";
     private static Pattern pattern = Pattern.compile("\\D*(\\d{8})\\D*");
+    private static SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd");
     private static List<SftpProgressMonitorImpl> LISTENERS = new LinkedList<>();
     private static List<ChannelSftp> CHANNELS = new LinkedList<>();
 
     private static FileServerInfo fileServerInfo;
     protected static Semaphore semaphore;
 
-    private static String deadline;
+    private static Date deadline;
     private static ExecutorService fixedThreadPool;
     protected static AtomicInteger wg = new AtomicInteger();
     protected static Map<String, DirRecord> dirRecords = new HashMap<>();
@@ -336,7 +338,7 @@ public class SftpDownload {
             if (rFile.getFiles().size() > 0 && rFile.getDirs().size()==2) {
                 String ipStr = dirName.substring(dirName.lastIndexOf("/") + 1);
                 if (compareIp(ipStr, fileServerInfo.getStartIp()) < 0 || compareIp(ipStr, fileServerInfo.getEndIp()) > 0) {
-                    System.out.printf("skip dir:%s, reason: ip:%s is out of range %s %s\n", dirName, ipStr, fileServerInfo.getStartIp(), fileServerInfo.getEndIp());
+                    //System.out.printf("skip dir:%s, reason: ip:%s is out of range %s %s\n", dirName, ipStr, fileServerInfo.getStartIp(), fileServerInfo.getEndIp());
                     continue;
                 }
             }
@@ -375,13 +377,13 @@ public class SftpDownload {
                             continue;
                         }
                         if (fileServerInfo.isToday() && !name.contains(todayStr)) {
-                            dirRecord.transSkipByConfig(name);
-                            System.out.printf("skip file:%s, reason: file is not today\n", name);
+                            //dirRecord.transSkipByConfig(name);
+                            //System.out.printf("skip file:%s, reason: file is not today\n", name);
                             continue;
                         }
                         if (fileServerInfo.isNotoday() && name.contains(todayStr)) {
-                            dirRecord.transSkipByConfig(name);
-                            System.out.printf("skip file:%s, reason: file is today\n", name);
+                            //dirRecord.transSkipByConfig(name);
+                            //System.out.printf("skip file:%s, reason: file is today\n", name);
                             continue;
                         }
                         File localFile = new File(localDir, name);
@@ -475,41 +477,52 @@ public class SftpDownload {
                 dirRecord.delRecord(name);
             }
         }
-
         @Override
         public void run() {
             ChannelSftp sftp = syncChannel(null);
             SftpProgressMonitorImpl listen = syncListen(null);
-
             String name = getFile();
-            listen.reset();
             try {
+                if (sftp == null || listen == null) {
+                    logger.error("can't get sftp");
+                    return;
+                }
+                listen.reset();
                 doSftp(sftp, listen, dirRecords.get(dirName), name);
+
             } catch (SftpException e) {
                 if (e.getMessage().equals("failed to resume for ")) {
                     new File(LOCAL + dirName + "/" + name).deleteOnExit();
                     try {
                         doSftp(sftp, listen, dirRecords.get(dirName), name);
+
                     } catch (SftpException e1) {
+                        logger.error("", e1);
+                    } catch (Exception e1) {
                         logger.error("", e1);
                     }
                 } else {
                     logger.error(name, e);
                 }
+            } catch(Exception e){
+                logger.error(name, e);
+            }  finally {
+                boolean result = dirRecords.get(dirName).checkFinish(null, null, false);
+                if (listen != null) {
+                    syncListen(listen);
+                }
+                if (sftp != null && !result ) {
+                    syncChannel(sftp);
+                }
+                semaphore.release();
             }
-
-            dirRecords.get(dirName).checkFinish(sftp, listen, false);
-            syncListen(listen);
-
-            semaphore.release();
         }
     }
 
     private static void initDate() {
-        SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd");
         Calendar calendar = Calendar.getInstance();
         calendar.add(Calendar.DATE, -fileServerInfo.getDay());
-        deadline = format.format(calendar.getTime());
+        deadline = calendar.getTime();
         todayStr = format.format(new Date());
     }
 
@@ -557,8 +570,12 @@ public class SftpDownload {
     private static boolean checkTime(String name) {
         Matcher matcher = pattern.matcher(name);
         if (matcher.matches()) {
-            if (matcher.replaceAll("$1").compareTo(deadline) < 0) {
-                return true;
+            try {
+                if (format.parse(matcher.replaceAll("$1")).before(deadline)) {
+                    return true;
+                }
+            } catch (ParseException e) {
+                e.printStackTrace();
             }
         }
         return false;

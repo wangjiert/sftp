@@ -29,7 +29,7 @@ public class DirRecord {
 		getPrint();
 	}
 
-	protected synchronized void checkFinish(ChannelSftp sftp, SftpProgressMonitorImpl listen, boolean done) {
+	protected synchronized boolean checkFinish(ChannelSftp sftp, SftpProgressMonitorImpl listen, boolean done) {
 		int remain = 1;
 
 		if (done) {
@@ -45,10 +45,10 @@ public class DirRecord {
 			}
 			if (fos != null) {
 				fos = null;
-				if (sftp == null || listen == null) {
-					sftp = SftpDownload.globalTransSftp;
-					listen = SftpDownload.globalTransListen;
-				}
+				//if (sftp == null || listen == null) {
+					//sftp = SftpDownload.globalTransSftp;
+					//listen = SftpDownload.globalTransListen;
+				//}
 				//synchronized (sftp) {
 				//	finishJob(sftp, listen);
 				//}
@@ -59,14 +59,15 @@ public class DirRecord {
 				if (SftpDownload.wg.decrementAndGet() == 0 && SftpDownload.threadPoolDone) {
 					SftpDownload.syncChannel(sftp);
 					SftpDownload.wg.notifyAll();
-					return;
+					return true;
 				}
 			}
 		}
 
-		if (!done) {
-			SftpDownload.syncChannel(sftp);
-		}
+//		if (!done) {
+//			SftpDownload.syncChannel(sftp);
+//		}
+		return false;
 	}
 
 	private void finishJob(ChannelSftp sftp, SftpProgressMonitorImpl listen) {
