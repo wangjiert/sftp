@@ -333,13 +333,18 @@ public class SftpDownload {
         List<RemoteFile> rFiles = new LinkedList<>();
         rFiles.add(rFile);
         while (rFiles.size() > 0) {
+            boolean isCsv = false;
             rFile = rFiles.remove(0);
             String dirName = rFile.getName();
             if (rFile.getFiles().size() > 0 && rFile.getDirs().size()==2) {
                 String ipStr = dirName.substring(dirName.lastIndexOf("/") + 1);
-                if (compareIp(ipStr, fileServerInfo.getStartIp()) < 0 || compareIp(ipStr, fileServerInfo.getEndIp()) > 0) {
-                    //System.out.printf("skip dir:%s, reason: ip:%s is out of range %s %s\n", dirName, ipStr, fileServerInfo.getStartIp(), fileServerInfo.getEndIp());
-                    continue;
+                if (ipStr.contains(".")) {
+                    if (compareIp(ipStr, fileServerInfo.getStartIp()) < 0 || compareIp(ipStr, fileServerInfo.getEndIp()) > 0) {
+                        //System.out.printf("skip dir:%s, reason: ip:%s is out of range %s %s\n", dirName, ipStr, fileServerInfo.getStartIp(), fileServerInfo.getEndIp());
+                        continue;
+                    }
+                } else {
+                    isCsv = true;
                 }
             }
             if (checkValid(rFile.getFiles())) {
@@ -376,6 +381,15 @@ public class SftpDownload {
                             dirRecord.transSkip(name);
                             continue;
                         }
+                        if (isCsv) {
+                            int charIndex = name.indexOf("e_cdr") - 1;
+                            String ipStr = name.substring(0, charIndex);
+                            if (compareIp(ipStr, fileServerInfo.getStartIp()) < 0 || compareIp(ipStr, fileServerInfo.getEndIp()) > 0) {
+                                //System.out.printf("skip dir:%s, reason: ip:%s is out of range %s %s\n", dirName, ipStr, fileServerInfo.getStartIp(), fileServerInfo.getEndIp());
+                                continue;
+                            }
+                        }
+
                         if (fileServerInfo.isToday() && !name.contains(todayStr)) {
                             //dirRecord.transSkipByConfig(name);
                             //System.out.printf("skip file:%s, reason: file is not today\n", name);

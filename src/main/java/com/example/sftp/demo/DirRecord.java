@@ -30,44 +30,52 @@ public class DirRecord {
 	}
 
 	protected synchronized boolean checkFinish(ChannelSftp sftp, SftpProgressMonitorImpl listen, boolean done) {
-		int remain = 1;
+        int remain = 1;
 
-		if (done) {
-			this.readDone = true;
-			remain = count.get();
-		} else {
-			remain = count.decrementAndGet();
-		}
-		if (this.readDone && remain == 0) {
-			if (fos != null) {
-				fos.flush();
-				fos.close();
-			}
-			if (fos != null) {
-				fos = null;
-				//if (sftp == null || listen == null) {
+        if (done) {
+            this.readDone = true;
+            remain = count.get();
+        } else {
+            remain = count.decrementAndGet();
+        }
+	    try {
+			if (this.readDone && remain == 0) {
+				if (fos != null) {
+					fos.flush();
+					fos.close();
+				}
+				if (fos != null) {
+					fos = null;
+					//if (sftp == null || listen == null) {
 					//sftp = SftpDownload.globalTransSftp;
 					//listen = SftpDownload.globalTransListen;
-				//}
-				//synchronized (sftp) {
-				//	finishJob(sftp, listen);
-				//}
-			}
-			SftpDownload.dirRecords.remove(dirName);
-
-			synchronized (SftpDownload.wg) {
-				if (SftpDownload.wg.decrementAndGet() == 0 && SftpDownload.threadPoolDone) {
-					SftpDownload.syncChannel(sftp);
-					SftpDownload.wg.notifyAll();
-					return true;
+					//}
+					//synchronized (sftp) {
+					//	finishJob(sftp, listen);
+					//}
 				}
+				SftpDownload.dirRecords.remove(dirName);
 			}
-		}
 
 //		if (!done) {
 //			SftpDownload.syncChannel(sftp);
 //		}
-		return false;
+		}catch (Exception e) {
+            logger.error("",e);
+        } finally {
+			synchronized (SftpDownload.wg) {
+                if (this.readDone && remain <= 0) {
+                    if (SftpDownload.wg.decrementAndGet() <= 0 && SftpDownload.threadPoolDone) {
+                    	if (sftp != null) {
+							SftpDownload.syncChannel(sftp);
+						}
+                        SftpDownload.wg.notifyAll();
+                        return true;
+                    }
+                }
+			}
+		}
+        return false;
 	}
 
 	private void finishJob(ChannelSftp sftp, SftpProgressMonitorImpl listen) {
