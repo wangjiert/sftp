@@ -65,6 +65,7 @@ public class SftpDownload {
     protected static AtomicInteger wg = new AtomicInteger();
     protected static Map<String, DirRecord> dirRecords = new HashMap<>();
     private static String todayStr;
+    private static String yesterday;
 
     public static void main(String[] args) {
         // download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads",
@@ -72,87 +73,98 @@ public class SftpDownload {
         System.out.println("=============================================================================");
         System.out.printf("=========begin new transmission======time:%s====\n", new Date().toString());
         System.out.println("=============================================================================");
-        if (args[1].equals("u")) {
-            SftpUpload.upload(args);
-            return;
-        }
-        HOME_PATH = System.getProperty("SFTP_HOME");
-        logger = LogManager.getLogger(SftpDownload.class);
-        File conf = new File(HOME_PATH + "../conf/my.conf");
-        if (conf.exists()) {
-            finishFiles = LogManager.getLogger("SftpDownload");
-            Properties prop = parseConfig(conf.getAbsolutePath());
-            if (prop == null) {
+        try {
+            if (args[1].equals("u")) {
+                SftpUpload.upload(args);
                 return;
             }
-            String[] hosts = prop.getProperty("remote.host").split(" ");
-            String[] ports = prop.getProperty("remote.port").split(" ");
-            String[] usernames = prop.getProperty("remote.username").split(" ");
-            String[] passwords = null;
-            if (prop.getProperty("remote.password") != null) {
-                passwords = prop.getProperty("remote.password").split(" ");
-            }
-            String[] dirs = prop.getProperty("remote.dir").split(" ");
-            if (prop.getProperty("today").equals("true") && prop.getProperty("notoday").equals("true")) {
+            HOME_PATH = System.getProperty("SFTP_HOME");
+            logger = LogManager.getLogger(SftpDownload.class);
+            File conf = new File(HOME_PATH + "../conf/my.conf");
+            if (conf.exists()) {
+                finishFiles = LogManager.getLogger("SftpDownload");
+//                if (!DBUtil.init()) {
+//                    return;
+//                }
+                Properties prop = parseConfig(conf.getAbsolutePath());
+                if (prop == null) {
+                    return;
+                }
+                String[] hosts = prop.getProperty("remote.host").split(" ");
+                String[] ports = prop.getProperty("remote.port").split(" ");
+                String[] usernames = prop.getProperty("remote.username").split(" ");
+                String[] passwords = null;
+                if (prop.getProperty("remote.password") != null) {
+                    passwords = prop.getProperty("remote.password").split(" ");
+                }
+                String[] dirs = prop.getProperty("remote.dir").split(" ");
+                if (prop.getProperty("today").equals("true") && prop.getProperty("notoday").equals("true")) {
 
-            }
-            int total = hosts.length;
-            for (int i = 0; i < total; i++) {
-                prop.setProperty("remote.host", hosts[i]);
-                prop.setProperty("remote.port", ports[i]);
-                prop.setProperty("remote.username", usernames[i]);
-                if (passwords != null) {
-                    prop.setProperty("remote.password", passwords[i]);
                 }
-                prop.setProperty("remote.dir", dirs[i]);
-                prop.setProperty("local.dir", prop.getProperty("local.dir"));
-                fileServerInfo = new FileServerInfo(prop);
+                int total = hosts.length;
+                for (int i = 0; i < total; i++) {
+                    prop.setProperty("remote.host", hosts[i]);
+                    prop.setProperty("remote.port", ports[i]);
+                    prop.setProperty("remote.username", usernames[i]);
+                    if (passwords != null) {
+                        prop.setProperty("remote.password", passwords[i]);
+                    }
+                    prop.setProperty("remote.dir", dirs[i]);
+                    prop.setProperty("local.dir", prop.getProperty("local.dir"));
+                    fileServerInfo = new FileServerInfo(prop);
+                    if (fileServerInfo == null) {
+                        return;
+                    }
+                    if (fileServerInfo.isToday() && fileServerInfo.isNotoday()) {
+                        System.out.printf("time:%s, thread :%s, today and notoday can't be true the same time\n",
+                                new Date().toString(), Thread.currentThread().getName());
+                        return;
+                    }
+                    if (fileServerInfo.getStartIp().equals("") || fileServerInfo.getEndIp().equals("")) {
+                        System.out.printf("time:%s, thread :%s, iprange format is wrong\n",
+                                new Date().toString(), Thread.currentThread().getName());
+                        return;
+                    }
+                    download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
+                            fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
+                }
+            } else {
+                initFileServerInfo(args);
                 if (fileServerInfo == null) {
-                    return;
-                }
-                if (fileServerInfo.isToday() && fileServerInfo.isNotoday()) {
-                    System.out.printf("time:%s, thread :%s, today and notoday can't be true the same time\n",
-                            new Date().toString(), Thread.currentThread().getName());
-                    return;
-                }
-                if (fileServerInfo.getStartIp().equals("") || fileServerInfo.getEndIp().equals("")) {
-                    System.out.printf("time:%s, thread :%s, iprange format is wrong\n",
-                            new Date().toString(), Thread.currentThread().getName());
                     return;
                 }
                 download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
                         fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
             }
-        } else {
-            initFileServerInfo(args);
-            if (fileServerInfo == null) {
-                return;
-            }
-            download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
-                    fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
+        } finally {
+            DBUtil.close();
+            System.out.println("=============================================================================");
+            System.out.printf("=========end new transmission=======time:%s=======\n", new Date().toString());
+            System.out.println("=============================================================================");
         }
-        System.out.println("=============================================================================");
-        System.out.printf("=========end new transmission=======time:%s=======\n", new Date().toString());
-        System.out.println("=============================================================================");
     }
 
     private static Properties parseConfig(String filename) {
         Pattern pattern = Pattern.compile("^\\[.*\\]$");
         try (BufferedReader f = new BufferedReader(new InputStreamReader(new FileInputStream(filename)));) {
             while (true) {
-                String line = f.readLine().trim();
+                String line = f.readLine();
                 if (line == null) {
                     return null;
-                } else if (line.trim().equals("[mydump]")) {
+                }
+                line = line.trim();
+                if (line.equals("[mydump]")) {
                     break;
                 }
             }
             Properties properties = new Properties();
             while (true) {
-                String line = f.readLine().trim();
+                String line = f.readLine();
                 if (line == null) {
                     break;
-                } else if (line.startsWith("#")) {
+                }
+                line = line.trim();
+                if (line.startsWith("#")) {
                     continue;
                 } else if (line.equals("")) {
                     continue;
@@ -390,7 +402,7 @@ public class SftpDownload {
                             }
                         }
 
-                        if (fileServerInfo.isToday() && !name.contains(todayStr)) {
+                        if (fileServerInfo.isToday() && !name.contains(todayStr) && !name.contains(yesterday)) {
                             //dirRecord.transSkipByConfig(name);
                             //System.out.printf("skip file:%s, reason: file is not today\n", name);
                             continue;
@@ -538,6 +550,11 @@ public class SftpDownload {
         calendar.add(Calendar.DATE, -fileServerInfo.getDay());
         deadline = calendar.getTime();
         todayStr = format.format(new Date());
+
+        calendar = Calendar.getInstance();
+        calendar.add(Calendar.DATE, -1);
+        yesterday = format.format(calendar.getTime());
+
     }
 
     private static boolean checkConnect() {
