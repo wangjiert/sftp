@@ -94,11 +94,10 @@ public class DBUtil {
             //1.getConnection()方法，连接MySQL数据库！！
             con = DriverManager.getConnection(url, user, password);
             //2.创建statement类对象，用来执行SQL语句！！
-            insert = con.prepareStatement("insert into record values(?,?,?,?,0)");
-            query = con.prepareStatement("select count(*) from record where id=?");
-            update = con.prepareStatement("update record set modify_time=?,size=?,is_done=0 where id=?");
+            insert = con.prepareStatement("insert into sftp_record values(?,?,?,?,0,0)");
+            query = con.prepareStatement("select count(*) from sftp_record where id=?");
+            update = con.prepareStatement("update sftp_record set modify_time=?,size=?,is_done=0,is_converted=0 where id=?");
             //要执行的SQL语句
-            insert.execute("create table if not exists record(id varchar(255) primary key, name varchar(255), size int, modify_time bigint(20), is_done int) default CHARSET utf8 collate utf8_general_ci;");
             return true;
         } catch (ClassNotFoundException e) {
             //数据库驱动类异常处理
@@ -176,5 +175,9 @@ public class DBUtil {
             resultCharArray[index++] = hexDigits[b & 0xf];
         }
         return new String(resultCharArray);
+    }
+
+    public static void main(String[] args) {
+        System.out.println(getMd5("sas"));
     }
 }

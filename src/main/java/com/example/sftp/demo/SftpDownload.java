@@ -40,7 +40,7 @@ import com.jcraft.jsch.SftpProgressMonitor;
 
 public class SftpDownload {
     private static Logger logger;
-    protected static Logger finishFiles;
+    //protected static Logger finishFiles;
     protected static boolean threadPoolDone;
     protected static ChannelSftp globalTransSftp;
     protected static SftpProgressMonitorImpl globalTransListen;
@@ -82,10 +82,10 @@ public class SftpDownload {
             logger = LogManager.getLogger(SftpDownload.class);
             File conf = new File(HOME_PATH + "../conf/my.conf");
             if (conf.exists()) {
-                finishFiles = LogManager.getLogger("SftpDownload");
-//                if (!DBUtil.init()) {
-//                    return;
-//                }
+                //finishFiles = LogManager.getLogger("SftpDownload");
+                if (!DBUtil.init()) {
+                    return;
+                }
                 Properties prop = parseConfig(conf.getAbsolutePath());
                 if (prop == null) {
                     return;
@@ -407,7 +407,7 @@ public class SftpDownload {
                             //System.out.printf("skip file:%s, reason: file is not today\n", name);
                             continue;
                         }
-                        if (fileServerInfo.isNotoday() && name.contains(todayStr)) {
+                        if (fileServerInfo.isNotoday() && (name.contains(todayStr) || name.contains(yesterday))) {
                             //dirRecord.transSkipByConfig(name);
                             //System.out.printf("skip file:%s, reason: file is today\n", name);
                             continue;
