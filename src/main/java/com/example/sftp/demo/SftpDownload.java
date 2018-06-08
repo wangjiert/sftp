@@ -71,10 +71,12 @@ public class SftpDownload {
         System.out.printf("=========begin new transmission======time:%s====\n", new Date().toString());
         System.out.println("=============================================================================");
         try {
+            //上传
             if (args[1].equals("u")) {
                 SftpUpload.upload(args);
                 return;
             }
+            //有最后的/
             HOME_PATH = System.getProperty("SFTP_HOME");
             logger = LogManager.getLogger(SftpDownload.class);
             File conf = new File(HOME_PATH + "../conf/my.conf");
@@ -132,6 +134,7 @@ public class SftpDownload {
                             fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
                 }
             } else {
+                //很久没更新了
                 initFileServerInfo(args);
                 if (fileServerInfo == null) {
                     return;

@@ -77,22 +77,26 @@ public class ConvertCheck {
         File to = new File("/var/lib/mysql/dumpdb");
         Set<File> toRemove = new HashSet<File>();
         try {
+            emptyDir("/var/lib/mysql-files/");
+            emptyDir("/var/lib/mysql/dumpdb");
             for (String suffix : SUFFIX) {
                 String realName = table + suffix;
                 File f = new File(dirName + File.separator + realName);
                 File dest = new File(to, realName);
                 Files.copy(f.toPath(), dest.toPath());
+                dest.setReadable(true, false);
+                dest.setWritable(true, false);
+                dest.setExecutable(true, false);
                 toRemove.add(dest);
             }
 
             System.out.printf("time:%s, thread :%s, begin to convert file %s \n",
-                    new Date().toString(), Thread.currentThread().getName(), outName);
+                    new Date().toString(), Thread.currentThread().getName(), dirName+"/"+name);
 
             if (DBUtil.convert(dbTable, outName)) {
                 String dumpPath = getOutpath(dirName, name, true);
                 String heads = DBUtil.getHead(table);
                 if (heads != null) {
-
                     Process p = Runtime.getRuntime().exec(new String[]{"sh", "-c", "sed -i '1i\\"+heads+"' " + outName +" && mv " + outName + " " + dumpPath});
                     p.waitFor();
                     System.out.printf("time:%s, thread :%s, convert file %s successed!\n",
@@ -100,6 +104,8 @@ public class ConvertCheck {
                     return dumpPath;
                 }
             }
+            System.out.printf("time:%s, thread :%s, convert file %s failed\n",
+                    new Date().toString(), Thread.currentThread().getName(), outName);
             toRemove.add(new File(outName));
         } catch (IOException | InterruptedException e) {
             System.out.printf("time:%s, thread :%s, convert file %s failed\n",
@@ -150,16 +156,20 @@ public class ConvertCheck {
         return false;
     }
 
-    public static void main(String[] args) {
-        String heads = "www";
-        String outName = "/home/arch/a";
-        Process p = null;
-        try {
-            p = Runtime.getRuntime().exec(new String[]{"sh", "-c", "sed -i '1i\\"+heads+"' " + outName + " && mv /home/arch/a /home/arch/Downloads/"});
-            p.waitFor();
-        } catch (IOException|InterruptedException e) {
-            e.printStackTrace();
+    static void emptyDir(String dir) {
+        File f = new File(dir);
+        String[] names = f.list();
+        for (String name:names) {
+            File delFile = new File(f, name);
+            delFile.delete();
         }
+    }
 
+    public static void main(String[] args) {
+        File f = new File("/home/arch");
+        String[] names = f.list();
+        for (String name:names) {
+            System.out.println(name);
+        }
     }
 }

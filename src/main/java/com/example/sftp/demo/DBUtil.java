@@ -196,9 +196,19 @@ public class DBUtil {
             convert.execute("select * from "+dbTable+" into outfile '"+outName+"' fields terminated by '|'");
             return true;
         } catch (SQLException e) {
-            logger.error("", e);
-            e.printStackTrace();
-
+            try {
+                if (e.getMessage().contains("is marked as crashed and should be repaired")) {
+                    ConvertCheck.emptyDir("/var/lib/mysql-files");
+                    convert.execute("repair table "+dbTable);
+                    convert.execute("flush table "+dbTable);
+                    convert.execute("select * from "+dbTable+" into outfile '"+outName+"' fields terminated by '|'");
+                    return true;
+                } else {
+                    logger.error("", e);
+                }
+            } catch (SQLException e1) {
+                logger.error("", e1);
+            }
         }
         return false;
     }
