@@ -24,8 +24,8 @@
         <Logger level="info" name="com.example.sftp.demo.FileRecord" additivity="false">
             <AppenderRef ref="file"/>
         </Logger>
-        <Logger level="info" name="SftpDownload" additivity="false">
-            <AppenderRef ref="record"/>
-        </Logger>
+        <!--<Logger level="info" name="SftpDownload" additivity="false">-->
+            <!--<AppenderRef ref="record"/>-->
+        <!--</Logger>-->
     </Loggers>
 </Configuration>

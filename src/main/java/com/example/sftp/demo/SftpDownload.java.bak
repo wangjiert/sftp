@@ -40,6 +40,7 @@ import com.jcraft.jsch.SftpProgressMonitor;
 
 public class SftpDownload {
     private static Logger logger;
+    //protected static Logger finishFiles;
     protected static boolean threadPoolDone;
     protected static ChannelSftp globalTransSftp;
     protected static SftpProgressMonitorImpl globalTransListen;
@@ -56,7 +57,7 @@ public class SftpDownload {
     private static List<SftpProgressMonitorImpl> LISTENERS = new LinkedList<>();
     private static List<ChannelSftp> CHANNELS = new LinkedList<>();
 
-    static FileServerInfo fileServerInfo;
+    private static FileServerInfo fileServerInfo;
     protected static Semaphore semaphore;
 
     private static Date deadline;
@@ -67,6 +68,8 @@ public class SftpDownload {
     private static String yesterday;
 
     public static void main(String[] args) {
+        // download("192.168.130.201", 22, "test", "123456", "/home/arch/Downloads",
+        // "/tmp/upload1", 10);
         System.out.println("=============================================================================");
         System.out.printf("=========begin new transmission======time:%s====\n", new Date().toString());
         System.out.println("=============================================================================");
@@ -87,12 +90,6 @@ public class SftpDownload {
                 if (prop == null) {
                     return;
                 }
-                Properties prop1 = ParseConfig.parse(conf.getAbsolutePath(), "datafile", "data_file_path");
-                if (prop1 == null) {
-                    return;
-                }
-                prop.setProperty("datafile.data_file_path", prop1.getProperty("datafile.data_file_path"));
-
                 String[] hosts = prop.getProperty("remote.host").split(" ");
                 String[] ports = prop.getProperty("remote.port").split(" ");
                 String[] usernames = prop.getProperty("remote.username").split(" ");

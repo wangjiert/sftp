@@ -142,7 +142,10 @@ public class DirRecord {
             //return;
         } else {
             if (!name.equals("download.log")) {
-                DBUtil.addRow(SftpDownload.LOCAL + dirName + "/" + name, total, Long.parseLong(times[0]));
+                String newName = ConvertCheck.doConvert(SftpDownload.LOCAL + dirName + "/" + name);
+                if (newName != null) {
+                    DBUtil.addRow(newName, total, Long.parseLong(times[0]));
+                }
                 //SftpDownload.finishFiles.info(SftpDownload.LOCAL + dirName + "/" + name);
             }
             message = name + "\t" + format.format(new Date()) + "\t" + total + "\t" + skip + "\t" + sum + " " + times[0] + " " + times[1] + "\n";

@@ -21,6 +21,8 @@ public class DBUtil {
     private static PreparedStatement insert;
     private static PreparedStatement query;
     private static PreparedStatement update;
+    private static PreparedStatement columns;
+    private static Statement convert;
 
     private static boolean parseConfig() {
         File conf = new File(System.getProperty("SFTP_HOME") + "../conf/my.conf");
@@ -94,9 +96,11 @@ public class DBUtil {
             //1.getConnection()方法，连接MySQL数据库！！
             con = DriverManager.getConnection(url, user, password);
             //2.创建statement类对象，用来执行SQL语句！！
-            insert = con.prepareStatement("insert into sftp_record values(?,?,?,?,0,0)");
+            insert = con.prepareStatement("insert into sftp_record values(?,?,?,?,?,?,0,0,?)");
             query = con.prepareStatement("select count(*) from sftp_record where id=?");
-            update = con.prepareStatement("update sftp_record set modify_time=?,size=?,is_done=0,is_converted=0 where id=?");
+            update = con.prepareStatement("update sftp_record set update_time=?,modify_time=?,size=?,is_done=0,is_found=0 where id=?");
+            convert = con.createStatement();
+            columns = con.prepareStatement("select column_name from information_schema.columns where table_schema='dumpdb' and table_name=?");
             //要执行的SQL语句
             return true;
         } catch (ClassNotFoundException e) {
@@ -129,15 +133,24 @@ public class DBUtil {
             rs = query.executeQuery();
             rs.next();
             if (rs.getInt(1) > 0) {
-                update.setLong(1, time);
-                update.setLong(2, size);
-                update.setString(3, getMd5(name));
+                update.setTimestamp(1, new Timestamp(new java.util.Date().getTime()));
+                update.setLong(2, time);
+                update.setLong(3, size);
+                update.setString(4, getMd5(name));
                 return (update.executeUpdate() > 0);
             } else {
                 insert.setString(1, getMd5(name));
                 insert.setString(2, name);
-                insert.setLong(3,size);
-                insert.setLong(4, time);
+                String dirName = name.substring(0, name.lastIndexOf("/"));
+                if (name.endsWith(".csv")) {
+                    insert.setString(3, name.substring(0, name.indexOf("e_cdr") - 1));
+                } else {
+                    insert.setString(3, dirName.substring(dirName.lastIndexOf("/")+1));
+                }
+                insert.setString(4, dirName);
+                insert.setLong(5,size);
+                insert.setLong(6, time);
+                insert.setTimestamp(7, new Timestamp(new java.util.Date().getTime()));
                 return (insert.executeUpdate() > 0);
             }
         } catch (SQLException e) {
@@ -177,7 +190,69 @@ public class DBUtil {
         return new String(resultCharArray);
     }
 
+    static boolean convert(String dbTable, String outName) {
+        try {
+            convert.execute("flush table "+dbTable);
+            convert.execute("select * from "+dbTable+" into outfile '"+outName+"' fields terminated by '|'");
+            return true;
+        } catch (SQLException e) {
+            logger.error("", e);
+            e.printStackTrace();
+
+        }
+        return false;
+    }
+
+    static String getHead(String table) {
+        ResultSet rs = null;
+        try {
+            columns.setString(1, table);
+            rs = columns.executeQuery();
+            String heads = "";
+            while (rs.next()) {
+                heads += rs.getString(1)+"|";
+            }
+            if (heads.charAt(heads.length()-1) == '|') {
+                heads = heads.substring(0, heads.length()-1);
+            }
+            if (!heads.equals("")) {
+                return heads;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            if (rs != null) {
+                try {
+                    rs.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return null;
+    }
+
     public static void main(String[] args) {
-        System.out.println(getMd5("sas"));
+        try {
+            //加载驱动程序
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            con = DriverManager.getConnection("jdbc:mysql://192.168.130.201/gaxz?useSSL=false", "root", "123456.abcd");
+            convert = con.createStatement();
+            try {
+                boolean ss = convert.execute("flush table dumpdb.e_customer20180315");
+                convert.execute("select * from dumpdb.e_customer20180315 into outfile '/var/lib/mysql-files/e_customer20180315.sql' fields terminated by '|'");
+                System.out.println(ss);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        } catch (ClassNotFoundException e) {
+            //数据库驱动类异常处理
+            e.printStackTrace();
+        } catch (SQLException e) {
+            //数据库连接失败异常处理
+            e.printStackTrace();
+        } catch (Exception e) {
+           e.printStackTrace();
+        }
     }
 }

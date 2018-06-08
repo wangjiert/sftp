@@ -1,9 +1,18 @@
 package com.example.sftp.model;
 
+import java.io.File;
 import java.util.Properties;
 
 public class FileServerInfo {
+	public String getDumpDir() {
+		return dumpDir;
+	}
 
+	public void setDumpDir(String dumpDir) {
+		this.dumpDir = dumpDir;
+	}
+
+	private String dumpDir;
 	private String host;
 	private int port;
 	private String account;
@@ -53,6 +62,7 @@ public class FileServerInfo {
     }
 	
 	public FileServerInfo(Properties prop) {
+		this.dumpDir = prop.getProperty("datafile.data_file_path")+ File.separator+"sqldump";
 		this.host = prop.getProperty("remote.host");
 		this.port = Integer.parseInt(prop.getProperty("remote.port", "22"));
 		this.account = prop.getProperty("remote.username");
@@ -60,6 +70,7 @@ public class FileServerInfo {
 		this.localPath = prop.getProperty("local.dir");
 		this.filePath = prop.getProperty("remote.dir").replaceAll("\\\\", "/");
 		this.max = Integer.parseInt(prop.getProperty("max.thread", "10"));
+		this.max = 1;
 		this.privateKey = prop.getProperty("key.path");
 		this.passphrase = prop.getProperty("key.pwd");
 		this.timeout = Integer.parseInt(prop.getProperty("remote.timeout", "604800000"));
