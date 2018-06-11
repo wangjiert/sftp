@@ -6,9 +6,7 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.*;
-import java.util.HashSet;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -173,9 +171,10 @@ public class DBUtil {
     static String getHead(String table) {
         ResultSet rs = null;
         try {
+            columns.execute("flush table dumpdb."+table);
             columns.setString(1, table);
             rs = columns.executeQuery();
-            Set<String> heads = new HashSet<>();
+            List<String> heads = new LinkedList<>();
             while (rs.next()) {
                 heads.add(rs.getString(1));
             }
