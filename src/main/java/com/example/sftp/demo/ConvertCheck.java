@@ -12,7 +12,7 @@ import java.util.Set;
 
 public class ConvertCheck {
     private static Logger logger = LogManager.getLogger(ConvertCheck.class);
-    private static Set<String> SUFFIX = new HashSet<String>();
+    private static Set<String> SUFFIX = new HashSet<>();
 
     static {
         SUFFIX.add(".frm");
@@ -20,27 +20,22 @@ public class ConvertCheck {
         SUFFIX.add(".MYI");
     }
 
-    static String doConvert(String fileName) {
+    static void doConvert(String fileName) {
         int splitIndex = fileName.lastIndexOf("/");
         String dirName = fileName.substring(0, splitIndex);
         String name = fileName.substring(splitIndex + 1);
 
         if (name.endsWith(".csv")) {
             String outpath = getOutpath(dirName, name, true);
-            if (cpFile(fileName, outpath)) {
-                return outpath;
-            }
+            cpFile(fileName, outpath);
         } else if (name.startsWith("wtmp")) {
             String outpath = getOutpath(dirName, name, true);
-            if (handleWtmp(fileName, outpath)) {
-                return outpath;
-            }
+            handleWtmp(fileName, outpath);
         } else if (isMysqlFile(name)) {
             if (canConverted(dirName, name)) {
-                return doTrans(dirName, name);
+                doTrans(dirName, name);
             }
         }
-        return null;
     }
 
     private static boolean isMysqlFile(String fileName) {
@@ -68,7 +63,7 @@ public class ConvertCheck {
         return true;
     }
 
-    private static String doTrans(String dirName, String name) {
+    private static void doTrans(String dirName, String name) {
         int index = name.lastIndexOf('.');
         String table = name.substring(0, index);
         name = table + ".mysql";
@@ -101,7 +96,7 @@ public class ConvertCheck {
                     p.waitFor();
                     System.out.printf("time:%s, thread :%s, convert file %s successed!\n",
                             new Date().toString(), Thread.currentThread().getName(), outName);
-                    return dumpPath;
+                    return;
                 }
             }
             System.out.printf("time:%s, thread :%s, convert file %s failed\n",
@@ -111,13 +106,15 @@ public class ConvertCheck {
             System.out.printf("time:%s, thread :%s, convert file %s failed\n",
                     new Date().toString(), Thread.currentThread().getName(), outName);
             logger.error("", e);
+        } catch (Throwable e) {
+            logger.error("", e);
         } finally {
             for (File f : toRemove) {
                 f.delete();
             }
         }
 
-        return null;
+        return;
     }
 
     private static String getOutpath(String dir, String name, boolean create) {
@@ -141,6 +138,8 @@ public class ConvertCheck {
             return true;
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
+        } catch (Throwable e) {
+            logger.error("", e);
         }
         return false;
     }
@@ -152,6 +151,8 @@ public class ConvertCheck {
             return true;
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
+        } catch (Throwable e) {
+            logger.error("", e);
         }
         return false;
     }
@@ -162,14 +163,6 @@ public class ConvertCheck {
         for (String name:names) {
             File delFile = new File(f, name);
             delFile.delete();
-        }
-    }
-
-    public static void main(String[] args) {
-        File f = new File("/home/arch");
-        String[] names = f.list();
-        for (String name:names) {
-            System.out.println(name);
         }
     }
 }
