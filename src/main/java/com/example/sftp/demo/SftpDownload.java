@@ -359,13 +359,20 @@ public class SftpDownload {
                                 logger.error("file " + localFile.getAbsolutePath() + "isn't a regular file");
                                 continue;
                             }
-                            localFile.delete();
+                            if (!localFile.delete()) {
+                                logger.error("delete file" + localFile.getAbsolutePath() + "failed");
+                            }
                         }
                         if (tableName != null) {//其他机器上已下载
                             for (String suffix : SUFFIX) {
+                                if (!rFile.getFiles().containsKey(tableName + suffix)) {
+                                    continue;
+                                }
                                 File rmFile = new File(localDir.toFile(), tableName + suffix);
                                 if (rmFile.exists() && DBUtil.get(PREFIX + "/" + dirName + "/" + tableName + suffix) < rFile.getFiles().get(tableName + suffix).getMTime()) {
-                                    rmFile.delete();
+                                    if (!rmFile.delete()) {
+                                        logger.error("delete file" + rmFile.getAbsolutePath() + "failed");
+                                    }
                                 }
                                 if (!downloadNames.contains(tableName + suffix)) {
                                     downloadNames.add(tableName + suffix);
