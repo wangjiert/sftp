@@ -329,13 +329,13 @@ public class SftpDownload {
                     }
 
                     //程序启动时就获取了时间 可能会和下一天存在少量重复
-                    if (fileServerInfo.isToday() && !name.contains(todayStr)) {
+                    if (fileServerInfo.isToday() && !name.replaceAll("-", "").contains(todayStr)) {
                         continue;
                     }
-                    if (fileServerInfo.isYestoday() && !name.contains(yesterday)) {
+                    if (fileServerInfo.isYestoday() && !name.replaceAll("-", "").contains(yesterday)) {
                         continue;
                     }
-                    if (fileServerInfo.isHistory() && (name.contains(todayStr) || name.contains(yesterday))) {
+                    if (fileServerInfo.isHistory() && (name.replaceAll("-", "").contains(todayStr) || name.replaceAll("-", "").contains(yesterday))) {
                         continue;
                     }
 

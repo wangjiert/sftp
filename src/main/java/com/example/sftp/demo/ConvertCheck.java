@@ -31,6 +31,8 @@ public class ConvertCheck {
         } else if (name.startsWith("wtmp")) {
             String outpath = getOutpath(dirName, name, true);
             handleWtmp(fileName, outpath);
+        } else if (name.endsWith(".gz")) {
+            GzHandle.doGz(dirName, fileName, name);
         } else if (isMysqlFile(name)) {
             if (canConverted(dirName, name)) {
                 doTrans(dirName, name);
@@ -117,7 +119,7 @@ public class ConvertCheck {
         return;
     }
 
-    private static String getOutpath(String dir, String name, boolean create) {
+    public static String getOutpath(String dir, String name, boolean create) {
         dir = dir.substring(SftpDownload.fileServerInfo.getLocalPath().length() + 1);
         if (dir.charAt(0) == '/') {
             dir = dir.substring(1);
