@@ -68,7 +68,7 @@ public class DBUtil {
             get = con.prepareStatement("select update_time from sftp_record where id=?");
             update = con.prepareStatement("update sftp_record set update_time=? where id=?");
             empty = con.prepareStatement("delete from dumpdb.b12_ext_ip_list");
-            transSpecial = con.prepareStatement("update dumpdb.b12_ext_ip_list set information=replace(replace(replace(information, char(10), ''), char(13), ''), '|', '&_&')");
+            transSpecial = con.prepareStatement("update dumpdb.b12_ext_ip_list set information=replace(replace(replace(information, char(10), '__&'), char(13), '&__'), '|', '&_&')");
             return true;
         } catch (ClassNotFoundException e) {
             logger.error("", e);

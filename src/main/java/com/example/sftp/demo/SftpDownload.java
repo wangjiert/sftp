@@ -320,7 +320,7 @@ public class SftpDownload {
                         continue;
                     }
 
-                    if (isCsv) {
+                    if (isCsv && !name.endsWith(".gz")) {
                         int charIndex = name.indexOf("e_cdr") - 1;
                         String ipStr = name.substring(0, charIndex);
                         if (compareIp(ipStr, fileServerInfo.getStartIp()) < 0 || compareIp(ipStr, fileServerInfo.getEndIp()) > 0) {

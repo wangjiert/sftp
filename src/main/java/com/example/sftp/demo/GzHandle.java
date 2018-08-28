@@ -1,15 +1,11 @@
 package com.example.sftp.demo;
 
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 public class GzHandle {
@@ -76,53 +72,4 @@ public class GzHandle {
         }
         return false;
     }
-
-    private static Set<String> decompress(String tar_gz, String sourceFolder) {
-        HashSet<String> files = new HashSet<>();
-        FileInputStream fis = null;
-        BufferedInputStream bis = null;
-        GZIPInputStream gzis = null;
-        TarArchiveInputStream tais = null;
-        OutputStream out = null;
-        try {
-            fis = new FileInputStream(tar_gz);
-            bis = new BufferedInputStream(fis);
-            gzis = new GZIPInputStream(bis);
-            tais = new TarArchiveInputStream(gzis);
-            TarArchiveEntry tae = null;
-            boolean flag = false;
-
-            while ((tae = tais.getNextTarEntry()) != null) {
-                File tmpFile = new File(sourceFolder + tae.getName());
-                if (!flag) {
-                    new File(tmpFile.getParent()).mkdirs();
-                    flag = true;
-                }
-                out = new FileOutputStream(tmpFile);
-                int length = 0;
-                byte[] b = new byte[BUFFER];
-                while ((length = tais.read(b)) != -1) {
-                    out.write(b, 0, length);
-                }
-                files.add(tmpFile.getAbsolutePath());
-            }
-        } catch (Exception e) {
-            logger.error("handle tz file err:", e);
-        } finally {
-            try {
-                if (tais != null) tais.close();
-                if (gzis != null) gzis.close();
-                if (bis != null) bis.close();
-                if (fis != null) fis.close();
-                if (out != null) {
-                    out.flush();
-                    out.close();
-                }
-            } catch (Exception e) {
-                logger.error("close file err:", e);
-            }
-        }
-        return files;
-    }
-
 }
