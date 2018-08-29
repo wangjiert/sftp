@@ -74,8 +74,8 @@ public class ConvertCheck {
         File to = new File("/var/lib/mysql/dumpdb");
         Set<File> toRemove = new HashSet<File>();
         try {
-            emptyDir("/var/lib/mysql-files/");
-            emptyDir("/var/lib/mysql/dumpdb");
+            emptyDir("/var/lib/mysql-files/", null);
+            emptyDir("/var/lib/mysql/dumpdb", "b12_ext_ip_list");
             for (String suffix : SUFFIX) {
                 String realName = table + suffix;
                 File f = new File(dirName + File.separator + realName);
@@ -159,10 +159,13 @@ public class ConvertCheck {
         return false;
     }
 
-    static void emptyDir(String dir) {
+    static void emptyDir(String dir, String ignore) {
         File f = new File(dir);
         String[] names = f.list();
         for (String name:names) {
+            if (name.equals(ignore)) {
+                continue;
+            }
             File delFile = new File(f, name);
             delFile.delete();
         }

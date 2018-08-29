@@ -64,7 +64,13 @@ public class DBUtil {
             columns = con.prepareStatement("select column_name from information_schema.columns where table_schema='dumpdb' and table_name=?");
             add = con.prepareStatement("insert into sftp_record values(?,?,?)");
             add.execute("create table if not exists sftp_record(id varchar(255) not null primary key , name varchar(255) not null, update_time bigint(20) not null )");
-            add.execute("create table if not exists dumpdb.b12_ext_ip_list(id int(11) NOT NULL AUTO_INCREMENT,ext_number varchar(255) DEFAULT NULL,ip varchar(255) DEFAULT NULL,criminal_ip varchar(255) DEFAULT NULL,port varchar(255) DEFAULT NULL,information text,hits int(11) DEFAULT NULL,created_at datetime DEFAULT NULL,updated_at datetime DEFAULT NULL,PRIMARY KEY (id)) ENGINE=MyISAM AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;");
+            try {
+                add.execute("create table if not exists dumpdb.b12_ext_ip_list(id int(11) NOT NULL AUTO_INCREMENT,ext_number varchar(255) DEFAULT NULL,ip varchar(255) DEFAULT NULL,criminal_ip varchar(255) DEFAULT NULL,port varchar(255) DEFAULT NULL,information text,hits int(11) DEFAULT NULL,created_at datetime DEFAULT NULL,updated_at datetime DEFAULT NULL,PRIMARY KEY (id)) ENGINE=MyISAM AUTO_INCREMENT=0 DEFAULT CHARSET=utf8");
+            } catch (Exception e) {
+                if (!e.getMessage().contains("already exists")) {
+                    return false;
+                }
+            }
             get = con.prepareStatement("select update_time from sftp_record where id=?");
             update = con.prepareStatement("update sftp_record set update_time=? where id=?");
             empty = con.prepareStatement("delete from dumpdb.b12_ext_ip_list");
@@ -154,7 +160,7 @@ public class DBUtil {
         do {
             try {
                 if (goon) {
-                    ConvertCheck.emptyDir("/var/lib/mysql-files");
+                    ConvertCheck.emptyDir("/var/lib/mysql-files", null);
                     convert.execute("repair table " + dbTable);
                 }
                 convert.execute("flush table " + dbTable);
@@ -241,7 +247,7 @@ public class DBUtil {
             //convert.execute("source " + path);
             if (doImport(path)) {
                 transSpecial.executeUpdate();
-                ConvertCheck.emptyDir("/var/lib/mysql-files");
+                ConvertCheck.emptyDir("/var/lib/mysql-files", null);
                 convert.execute("select * from dumpdb.b12_ext_ip_list into outfile '" + outPath + "' fields terminated by '|'");
                 return true;
             }
