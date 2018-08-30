@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Date;
@@ -88,13 +89,13 @@ public class ConvertCheck {
             }
 
             System.out.printf("time:%s, thread :%s, begin to convert file %s \n",
-                    new Date().toString(), Thread.currentThread().getName(), dirName+"/"+name);
+                    new Date().toString(), Thread.currentThread().getName(), dirName + "/" + name);
 
             if (DBUtil.convert(dbTable, outName)) {
                 String dumpPath = getOutpath(dirName, name, true);
                 String heads = DBUtil.getHead(table);
                 if (heads != null) {
-                    Process p = Runtime.getRuntime().exec(new String[]{"sh", "-c", "sed -i '1i\\"+heads+"' " + outName +" && mv " + outName + " " + dumpPath});
+                    Process p = Runtime.getRuntime().exec(new String[]{"sh", "-c", "sed -i '1i\\" + heads + "' " + outName + " && mv " + outName + " " + dumpPath});
                     p.waitFor();
                     System.out.printf("time:%s, thread :%s, convert file %s successed!\n",
                             new Date().toString(), Thread.currentThread().getName(), outName);
@@ -161,13 +162,22 @@ public class ConvertCheck {
 
     static void emptyDir(String dir, String ignore) {
         File f = new File(dir);
-        String[] names = f.list();
-        for (String name:names) {
-            if (name.equals(ignore)) {
-                continue;
-            }
-            File delFile = new File(f, name);
-            delFile.delete();
+        String[] names = null;
+        if (ignore != null) {
+            names = f.list(new FilenameFilter() {
+                @Override
+                public boolean accept(File dir, String name) {
+                    if (name.contains(ignore)) {
+                        return false;
+                    }
+                    return true;
+                }
+            });
+        } else {
+            names = f.list();
+        }
+        for (String name : names) {
+            new File(f, name).deleteOnExit();
         }
     }
 }
