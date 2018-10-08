@@ -72,6 +72,7 @@ public class SftpDownload {
 
                 fileServerInfo = new FileServerInfo(prop);
 
+                JedisUtils.go(conf, fileServerInfo.getLocalPath(), fileServerInfo.getDumpDir());
                 download(fileServerInfo.getHost(), fileServerInfo.getPort(), fileServerInfo.getAccount(),
                         fileServerInfo.getPassword(), fileServerInfo.getLocalPath(), args[0], fileServerInfo.getMax());
 
