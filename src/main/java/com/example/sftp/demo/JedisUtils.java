@@ -110,7 +110,10 @@ public class JedisUtils {
 
     public static void doJedis() {
         while (true) {
-            List<byte[]> result = jedis.brpop(2000, "qh_cdr".getBytes());
+            List<byte[]> result = jedis.brpop(2, "qh_cdr".getBytes());
+            if (result == null) {
+                break;
+            }
             //String key = new String(result.get(0));
             byte[] value = result.get(1);
             Object t = toObject(value);
@@ -133,6 +136,7 @@ public class JedisUtils {
                     try {
                         Path dest = Paths.get(tmp.replace(local, dump));
                         Files.createDirectories(dest.getParent());
+                        Files.deleteIfExists(dest);
                         Files.copy(new File(tmp).toPath(), dest);
                     } catch (Exception e) {
                         logger.error("", e);
@@ -145,17 +149,21 @@ public class JedisUtils {
     }
 
     public static void go(Path conf, String local, String dump) {
-        Properties prop = ParseConfig.parse(conf, "redis", null);
-        if (prop == null)
-            return;
+        try {
+            Properties prop = ParseConfig.parse(conf, "redis", null);
+            if (prop == null)
+                return;
 
-        JedisUtils.local = local + "/redis";
-        JedisUtils.dump = dump + "/redis";
-        JedisUtils.ip = prop.getProperty("ip");
-        JedisUtils.port = Integer.parseInt(prop.getProperty("port"));
-        JedisUtils.auth = prop.getProperty("auth");
-        init();
-        doJedis();
-        destroy();
+            JedisUtils.local = local + "/redis";
+            JedisUtils.dump = dump + "/redis";
+            JedisUtils.ip = prop.getProperty("ip");
+            JedisUtils.port = Integer.parseInt(prop.getProperty("port"));
+            JedisUtils.auth = prop.getProperty("auth");
+            init();
+            doJedis();
+            destroy();
+        } catch (Throwable e) {
+            logger.error("redis err:", e);
+        }
     }
 }

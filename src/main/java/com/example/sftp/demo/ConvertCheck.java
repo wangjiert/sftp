@@ -177,7 +177,7 @@ public class ConvertCheck {
             names = f.list();
         }
         for (String name : names) {
-            new File(f, name).deleteOnExit();
+            new File(f, name).delete();
         }
     }
 }

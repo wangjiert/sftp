@@ -89,6 +89,9 @@ public class DBUtil {
     static void addRecord(String name, int modifyTime) {
         ResultSet rs = null;
         try {
+            if (get.isClosed()) {
+                get = con.prepareStatement("select update_time from sftp_record where id=?");
+            }
             get.setString(1, getMd5(name));
             rs = get.executeQuery();
             if (rs.next()) {
@@ -160,13 +163,11 @@ public class DBUtil {
         do {
             try {
                 if (goon) {
-                    ConvertCheck.emptyDir("/var/lib/mysql-files", null);
                     convert.execute("repair table " + dbTable);
                 }
                 convert.execute("flush table " + dbTable);
+                ConvertCheck.emptyDir("/var/lib/mysql-files", null);
                 convert.execute("select * from " + dbTable + " into outfile '" + outName + "' fields terminated by '|'");
-                String[] dbTables = dbTable.split("\\.");
-
                 return true;
             } catch (SQLException e) {
                 if (e.getMessage().contains("is marked as crashed and should be repaired")) {

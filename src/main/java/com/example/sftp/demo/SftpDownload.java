@@ -323,6 +323,10 @@ public class SftpDownload {
 
                     if (isCsv && !name.endsWith(".gz")) {
                         int charIndex = name.indexOf("e_cdr") - 1;
+                        if (charIndex < 0) {
+                            logger.error("wrong file name:", name);
+                            continue;
+                        }
                         String ipStr = name.substring(0, charIndex);
                         if (compareIp(ipStr, fileServerInfo.getStartIp()) < 0 || compareIp(ipStr, fileServerInfo.getEndIp()) > 0) {
                             continue;
