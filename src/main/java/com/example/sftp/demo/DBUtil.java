@@ -8,7 +8,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.*;
 import java.util.*;
-import java.util.Date;
 
 import org.apache.commons.lang3.StringUtils;
 
